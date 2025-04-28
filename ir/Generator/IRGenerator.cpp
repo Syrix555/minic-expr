@@ -48,7 +48,7 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_LEAF_TYPE] = &IRGenerator::ir_leaf_node_type;
 
     /* 表达式运算， 加减 */
-    ast2ir_handlers[ast_operator_type::AST_OP_SUB] = &IRGenerator::ir_sub_or_minus;
+    ast2ir_handlers[ast_operator_type::AST_OP_SUB] = &IRGenerator::ir_sub_or_minus;			//将ir_sub替换成分派方法，选择执行求负还是减法
     ast2ir_handlers[ast_operator_type::AST_OP_ADD] = &IRGenerator::ir_add;
 
     /* 语句 */
@@ -483,6 +483,7 @@ bool IRGenerator::ir_minus(ast_node * node)
         return false;
     }
 
+    //创建常量0节点
     ConstInt * const_zero = module->newConstInt(0);
 
     BinaryInstruction * minusInst = new BinaryInstruction(module->getCurrentFunction(),
