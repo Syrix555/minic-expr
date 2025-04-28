@@ -26,7 +26,7 @@
 			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/minic",
-			"args": ["-S", "-I", "-D", "-o", "tests/test2-2.ir", "tests/test2-2.c"],
+			"args": ["-S", "-A", "-D", "-o", "tests/test3-1.ir", "tests/test3-1.c"],
 			"cwd": "${workspaceFolder}",
 			// 不需要编译时可注释掉
 			"preLaunchTask": "CMake: build"
@@ -34,10 +34,10 @@
 		{
 			// 可采用GCC或者Clang编译器
 			"name": "Debug IR",
-			"type": "cppdbg",
+			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/minic",
-			"args": ["-S", "-D", "-I", "-o", "tests/test2-2.ir", "tests/test2-2.c"],
+			"args": ["-S", "-A", "-I", "-o", "tests/test3-1.ir", "tests/test3-1.c"],
 			// 程序的入口（main函数的入口）是否停止
 			"stopAtEntry": true,
 			"cwd": "${workspaceFolder}",
@@ -73,10 +73,10 @@
 		{
 			// 可采用GCC或者Clang编译器
 			"name": "Debug AST",
-			"type": "cppdbg",
+			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/minic",
-			"args": ["-S", "-A", "-T", "-o", "tests/test2-2.png", "tests/test2-1.c"],
+			"args": ["-S", "-A", "-T", "-o", "tests/test3-1.png", "tests/test3-1.c"],
 			// 程序的入口（main函数的入口）是否停止
 			"stopAtEntry": true,
 			"cwd": "${workspaceFolder}",

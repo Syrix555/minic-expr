@@ -288,6 +288,8 @@ public:
     antlr4::tree::TerminalNode *T_L_PAREN();
     antlr4::tree::TerminalNode *T_R_PAREN();
     RealParamListContext *realParamList();
+    antlr4::tree::TerminalNode *T_SUB();
+    UnaryExpContext *unaryExp();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;

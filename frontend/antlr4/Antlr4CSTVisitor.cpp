@@ -15,6 +15,8 @@
 /// </table>
 ///
 
+#include <any>
+#include <cstddef>
 #include <string>
 
 #include "Antlr4CSTVisitor.h"
@@ -292,7 +294,20 @@ std::any MiniCCSTVisitor::visitUnaryExp(MiniCParser::UnaryExpContext * ctx)
 
         // 创建函数调用节点，其孩子为被调用函数名和实参，
         return create_func_call(funcname_node, paramListNode);
-    } else {
+    } else if (ctx->T_SUB()) {
+        auto operandNode = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()));
+
+        if (!operandNode) {
+            return std::any{nullptr};
+        }
+
+        ast_operator_type op = ast_operator_type::AST_OP_SUB;
+
+        ast_node * unaryMinusNode = ast_node::New(op, operandNode, nullptr);
+
+        return unaryMinusNode;
+        
+	} else {
         return nullptr;
     }
 }
@@ -307,7 +322,7 @@ std::any MiniCCSTVisitor::visitPrimaryExp(MiniCParser::PrimaryExpContext * ctx)
         // 无符号整型字面量
         // 识别 primaryExp: T_DIGIT
 
-        uint32_t val = (uint32_t) stoull(ctx->T_DIGIT()->getText());
+        uint32_t val = (uint32_t) stoull(ctx->T_DIGIT()->getText(), nullptr, 0);					//将基数设置为0，以便stoull自动识别数据的进制
         int64_t lineNo = (int64_t) ctx->T_DIGIT()->getSymbol()->getLine();
         node = ast_node::New(digit_int_attr{val, lineNo});
     } else if (ctx->lVal()) {

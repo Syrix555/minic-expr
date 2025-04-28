@@ -22,9 +22,12 @@
 
 #include "AST.h"
 #include "Common.h"
+#include "ConstInt.h"
 #include "Function.h"
 #include "IRCode.h"
 #include "IRGenerator.h"
+#include "Instruction.h"
+#include "IntegerType.h"
 #include "Module.h"
 #include "EntryInstruction.h"
 #include "LabelInstruction.h"
@@ -45,7 +48,7 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_LEAF_TYPE] = &IRGenerator::ir_leaf_node_type;
 
     /* 表达式运算， 加减 */
-    ast2ir_handlers[ast_operator_type::AST_OP_SUB] = &IRGenerator::ir_sub;
+    ast2ir_handlers[ast_operator_type::AST_OP_SUB] = &IRGenerator::ir_sub_or_minus;
     ast2ir_handlers[ast_operator_type::AST_OP_ADD] = &IRGenerator::ir_add;
 
     /* 语句 */
@@ -411,6 +414,20 @@ bool IRGenerator::ir_add(ast_node * node)
     return true;
 }
 
+/// @brief 负号分派方法，用于判断对应的是一元求负还是二元减法
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_sub_or_minus(ast_node * node)
+{
+    if (node->sons.size() == 2) {
+        return ir_sub(node);
+    } else if (node->sons.size() == 1) {
+        return ir_minus(node);
+    } else {
+        return false;
+	}
+}
+
 /// @brief 整数减法AST节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
@@ -451,6 +468,36 @@ bool IRGenerator::ir_sub(ast_node * node)
     node->val = subInst;
 
     return true;
+}
+
+/// @brief 求负运算AST节点翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_minus(ast_node * node)
+{
+    ast_node * src_node = node->sons[0];
+
+    ast_node * num = ir_visit_ast_node(src_node);
+    if (!num) {
+		// 该变量无定值
+        return false;
+    }
+
+    ConstInt * const_zero = module->newConstInt(0);
+
+    BinaryInstruction * minusInst = new BinaryInstruction(module->getCurrentFunction(),
+                                                          IRInstOperator::IRINST_OP_SUB_I,
+                                                          const_zero,
+                                                          num->val,
+                                                          IntegerType::getTypeInt());
+
+    node->blockInsts.addInst(num->blockInsts);
+    node->blockInsts.addInst(minusInst);
+
+    node->val = minusInst;
+
+    return true;
+    
 }
 
 /// @brief 赋值AST节点翻译成线性中间IR

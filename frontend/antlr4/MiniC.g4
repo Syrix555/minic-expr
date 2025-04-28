@@ -51,7 +51,9 @@ addExp: unaryExp (addOp unaryExp)*;
 addOp: T_ADD | T_SUB;
 
 // 一元表达式
-unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN;
+unaryExp: primaryExp | 
+		  T_ID T_L_PAREN realParamList? T_R_PAREN |
+		  T_SUB unaryExp;
 
 // 基本表达式：括号表达式、整数、左值表达式
 primaryExp: T_L_PAREN expr T_R_PAREN | T_DIGIT | lVal;
@@ -82,7 +84,10 @@ T_INT: 'int';
 T_VOID: 'void';
 
 T_ID: [a-zA-Z_][a-zA-Z0-9_]*;
-T_DIGIT: '0' | [1-9][0-9]*;
+T_DIGIT: '0' [xX] [0-9a-fA-F]+ |
+		 '0' [0-7]+ |
+		 [1-9][0-9]* |
+		 '0' ;					//增加对8/16进制的支持
 
 /* 空白符丢弃 */
 WS: [ \r\n\t]+ -> skip;
