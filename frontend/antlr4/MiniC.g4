@@ -41,14 +41,24 @@ statement:
 	| block								# blockStatement
 	| expr? T_SEMICOLON					# expressionStatement;
 
-// 表达式文法 expr : AddExp 表达式目前只支持加法与减法运算
-expr: addExp;
+// 表达式文法 expr : 表达式目前支持加法与减法，乘除法运算
+//expr: addExp;
+expr: 
+	  <assoc=left> expr mulOp expr 		# mulExp
+	| <assoc=left> expr addOp expr		# addExp
+	| unaryExp                          # unaryExpr ;
 
-// 加减表达式
-addExp: unaryExp (addOp unaryExp)*;
+// 加减表达式，将 unaryExp 修改为 mulExp ，表示 * / % 比 + - 更先
+//addExp: mulExp (addOp mulExp)*;
 
 // 加减运算符
 addOp: T_ADD | T_SUB;
+
+// New: 乘除表达式
+//mulExp: unaryExp (mulOp unaryExp)*;
+
+// New: 乘除运算符
+mulOp: T_MUL | T_DIV | T_MOD;
 
 // 一元表达式
 unaryExp: primaryExp | 
@@ -77,6 +87,9 @@ T_COMMA: ',';
 
 T_ADD: '+';
 T_SUB: '-';
+T_MUL: '*';
+T_DIV: '/';
+T_MOD: '%';
 
 // 要注意关键字同样也属于T_ID，因此必须放在T_ID的前面，否则会识别成T_ID
 T_RETURN: 'return';

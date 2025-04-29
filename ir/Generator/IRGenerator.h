@@ -80,7 +80,22 @@ protected:
     /// @brief 求负运算AST节点翻译成线性中间IR
 	/// @param node AST节点
 	/// @return 翻译是否成功，true：成功，false：失败
-	bool ir_minus(ast_node * node);
+    bool ir_minus(ast_node * node);
+
+    /// @brief 整数乘法AST节点翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_mul(ast_node * node);
+
+    /// @brief 整数除法AST节点翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_div(ast_node * node);
+
+    /// @brief 整数求余AST节点翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_mod(ast_node * node);
 
     /// @brief 赋值AST节点翻译成线性中间IR
     /// @param node AST节点

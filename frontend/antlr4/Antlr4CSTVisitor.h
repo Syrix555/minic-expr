@@ -75,7 +75,7 @@ protected:
     /// @brief 非终结运算符expr的遍历
     /// @param ctx CST上下文
     /// @return AST的节点
-    std::any visitExpr(MiniCParser::ExprContext * ctx) override;
+    std::any visitExpr(MiniCParser::ExprContext * ctx);			//此时的MiniCBaseVisitor.h中并不存在这个函数，因此删除override
 
     ///
     /// @brief 内部产生的非终结符assignStatement的分析
@@ -96,7 +96,7 @@ protected:
     /// @param ctx CST上下文
     /// @return std::any AST的节点
     ///
-    std::any visitAddExp(MiniCParser::AddExpContext * ctx) override;
+	std::any visitAddExp(MiniCParser::AddExpContext * ctx) override;
 
     ///
     /// @brief 非终结符addOp的分析
@@ -105,6 +105,20 @@ protected:
     ///
     std::any visitAddOp(MiniCParser::AddOpContext * ctx) override;
 
+    ///
+    /// @brief 非终结符mulExp的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+	std::any visitMulExp(MiniCParser::MulExpContext *ctx) override;
+
+	///
+	/// @brief 非终结符mulOp的分析
+	/// @param ctx CST上下文
+	/// @return std::any 类型
+	///
+	std::any visitMulOp(MiniCParser::MulOpContext *ctx) override;
+    
     ///
     /// @brief 非终结符unaryExp的分析
     /// @param ctx CST上下文

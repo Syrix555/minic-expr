@@ -22,6 +22,7 @@
 #include "Antlr4CSTVisitor.h"
 #include "AST.h"
 #include "AttrType.h"
+#include "MiniCParser.h"
 
 #define Instanceof(res, type, var) auto res = dynamic_cast<type>(var)
 
@@ -195,9 +196,14 @@ std::any MiniCCSTVisitor::visitReturnStatement(MiniCParser::ReturnStatementConte
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitExpr(MiniCParser::ExprContext * ctx)
 {
-    // 识别产生式：expr: addExp;
+    // 识别产生式：expr:
+    //   <assoc=left> expr mulOp expr 		# mulExp
+    // | <assoc=left> expr addOp expr		# addExp
+    // | unaryExp                          # unaryExpr ;
 
-    return visitAddExp(ctx->addExp());
+    // 这里我使用了直接左递归的文法定义，无法通过传统的分发方式，因此这里使用antlr4提供的visit()进行分发
+    std::any res = visit(ctx);
+    return res;
 }
 
 std::any MiniCCSTVisitor::visitAssignStatement(MiniCParser::AssignStatementContext * ctx)
@@ -221,41 +227,43 @@ std::any MiniCCSTVisitor::visitBlockStatement(MiniCParser::BlockStatementContext
     return visitBlock(ctx->block());
 }
 
+std::any MiniCCSTVisitor::visitMulExp(MiniCParser::MulExpContext * ctx)
+{
+    // 识别的文法产生式：mulExp: expr mulOp expr
+    auto left = std::any_cast<ast_node *>(visitExpr(ctx->expr(0)));
+    auto right = std::any_cast<ast_node *>(visitExpr(ctx->expr(1)));
+
+    ast_operator_type op = std::any_cast<ast_operator_type>(visitMulOp(ctx->mulOp()));
+
+    ast_node * node = ast_node::New(op, left, right, nullptr);
+
+    return node;
+}
+
+std::any MiniCCSTVisitor::visitMulOp(MiniCParser::MulOpContext * ctx)
+{
+    // 识别的文法产生式：mulOp: T_MUL | T_DIV | T_MOD
+    if (ctx->T_MUL()) {
+        return ast_operator_type::AST_OP_MUL;
+    } else if (ctx->T_DIV()) {
+        return ast_operator_type::AST_OP_DIV;
+    } else {
+        return ast_operator_type::AST_OP_MOD;
+	}
+}
+
 std::any MiniCCSTVisitor::visitAddExp(MiniCParser::AddExpContext * ctx)
 {
-    // 识别的文法产生式：addExp : unaryExp (addOp unaryExp)*;
+    // 识别的文法产生式：addExp : expr addOp expr
+	auto left = std::any_cast<ast_node *>(visitExpr(ctx->expr(0)));
+    auto right = std::any_cast<ast_node *>(visitExpr(ctx->expr(1)));
 
-    if (ctx->addOp().empty()) {
+    ast_operator_type op = std::any_cast<ast_operator_type>(visitAddOp(ctx->addOp()));
 
-        // 没有addOp运算符，则说明闭包识别为0，只识别了第一个非终结符unaryExp
-        return visitUnaryExp(ctx->unaryExp()[0]);
-    }
+    ast_node * node = ast_node::New(op, left, right, nullptr);
 
-    ast_node *left, *right;
+    return node;
 
-    // 存在addOp运算符，自
-    auto opsCtxVec = ctx->addOp();
-
-    // 有操作符，肯定会进循环，使得right设置正确的值
-    for (int k = 0; k < (int) opsCtxVec.size(); k++) {
-
-        // 获取运算符
-        ast_operator_type op = std::any_cast<ast_operator_type>(visitAddOp(opsCtxVec[k]));
-
-        if (k == 0) {
-
-            // 左操作数
-            left = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()[k]));
-        }
-
-        // 右操作数
-        right = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()[k + 1]));
-
-        // 新建结点作为下一个运算符的右操作符
-        left = ast_node::New(op, left, right, nullptr);
-    }
-
-    return left;
 }
 
 /// @brief 非终结运算符addOp的遍历
@@ -321,7 +329,6 @@ std::any MiniCCSTVisitor::visitPrimaryExp(MiniCParser::PrimaryExpContext * ctx)
     if (ctx->T_DIGIT()) {
         // 无符号整型字面量
         // 识别 primaryExp: T_DIGIT
-
         uint32_t val = (uint32_t) stoull(ctx->T_DIGIT()->getText(), nullptr, 0);					//将基数设置为0，以便stoull自动识别数据的进制
         int64_t lineNo = (int64_t) ctx->T_DIGIT()->getSymbol()->getLine();
         node = ast_node::New(digit_int_attr{val, lineNo});

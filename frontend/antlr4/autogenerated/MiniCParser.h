@@ -13,14 +13,15 @@ class  MiniCParser : public antlr4::Parser {
 public:
   enum {
     T_L_PAREN = 1, T_R_PAREN = 2, T_SEMICOLON = 3, T_L_BRACE = 4, T_R_BRACE = 5, 
-    T_ASSIGN = 6, T_COMMA = 7, T_ADD = 8, T_SUB = 9, T_RETURN = 10, T_INT = 11, 
-    T_VOID = 12, T_ID = 13, T_DIGIT = 14, WS = 15
+    T_ASSIGN = 6, T_COMMA = 7, T_ADD = 8, T_SUB = 9, T_MUL = 10, T_DIV = 11, 
+    T_MOD = 12, T_RETURN = 13, T_INT = 14, T_VOID = 15, T_ID = 16, T_DIGIT = 17, 
+    WS = 18
   };
 
   enum {
     RuleCompileUnit = 0, RuleFuncDef = 1, RuleBlock = 2, RuleBlockItemList = 3, 
     RuleBlockItem = 4, RuleVarDecl = 5, RuleBasicType = 6, RuleVarDef = 7, 
-    RuleStatement = 8, RuleExpr = 9, RuleAddExp = 10, RuleAddOp = 11, RuleUnaryExp = 12, 
+    RuleStatement = 8, RuleExpr = 9, RuleAddOp = 10, RuleMulOp = 11, RuleUnaryExp = 12, 
     RulePrimaryExp = 13, RuleRealParamList = 14, RuleLVal = 15
   };
 
@@ -51,8 +52,8 @@ public:
   class VarDefContext;
   class StatementContext;
   class ExprContext;
-  class AddExpContext;
   class AddOpContext;
+  class MulOpContext;
   class UnaryExpContext;
   class PrimaryExpContext;
   class RealParamListContext;
@@ -239,32 +240,49 @@ public:
   class  ExprContext : public antlr4::ParserRuleContext {
   public:
     ExprContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    AddExpContext *addExp();
+   
+    ExprContext() = default;
+    void copyFrom(ExprContext *context);
+    using antlr4::ParserRuleContext::copyFrom;
 
+    virtual size_t getRuleIndex() const override;
+
+   
+  };
+
+  class  UnaryExprContext : public ExprContext {
+  public:
+    UnaryExprContext(ExprContext *ctx);
+
+    UnaryExpContext *unaryExp();
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+  };
+
+  class  AddExpContext : public ExprContext {
+  public:
+    AddExpContext(ExprContext *ctx);
+
+    std::vector<ExprContext *> expr();
+    ExprContext* expr(size_t i);
+    AddOpContext *addOp();
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+  };
+
+  class  MulExpContext : public ExprContext {
+  public:
+    MulExpContext(ExprContext *ctx);
+
+    std::vector<ExprContext *> expr();
+    ExprContext* expr(size_t i);
+    MulOpContext *mulOp();
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
   ExprContext* expr();
-
-  class  AddExpContext : public antlr4::ParserRuleContext {
-  public:
-    AddExpContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    std::vector<UnaryExpContext *> unaryExp();
-    UnaryExpContext* unaryExp(size_t i);
-    std::vector<AddOpContext *> addOp();
-    AddOpContext* addOp(size_t i);
-
-
-    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
-  };
-
-  AddExpContext* addExp();
-
+  ExprContext* expr(int precedence);
   class  AddOpContext : public antlr4::ParserRuleContext {
   public:
     AddOpContext(antlr4::ParserRuleContext *parent, size_t invokingState);
@@ -278,6 +296,21 @@ public:
   };
 
   AddOpContext* addOp();
+
+  class  MulOpContext : public antlr4::ParserRuleContext {
+  public:
+    MulOpContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *T_MUL();
+    antlr4::tree::TerminalNode *T_DIV();
+    antlr4::tree::TerminalNode *T_MOD();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  MulOpContext* mulOp();
 
   class  UnaryExpContext : public antlr4::ParserRuleContext {
   public:
@@ -344,6 +377,10 @@ public:
 
   LValContext* lVal();
 
+
+  bool sempred(antlr4::RuleContext *_localctx, size_t ruleIndex, size_t predicateIndex) override;
+
+  bool exprSempred(ExprContext *_localctx, size_t predicateIndex);
 
   // By default the static state used to implement the parser is lazily initialized during the first
   // call to the constructor. You can call this function if you wish to initialize the static state
