@@ -33,6 +33,7 @@
 #include "LabelInstruction.h"
 #include "ExitInstruction.h"
 #include "FuncCallInstruction.h"
+#include "UnaryInstruction.h"
 #include "BinaryInstruction.h"
 #include "MoveInstruction.h"
 #include "GotoInstruction.h"
@@ -486,14 +487,10 @@ bool IRGenerator::ir_minus(ast_node * node)
         return false;
     }
 
-    //创建常量0节点
-    ConstInt * const_zero = module->newConstInt(0);
-
-    BinaryInstruction * minusInst = new BinaryInstruction(module->getCurrentFunction(),
-                                                          IRInstOperator::IRINST_OP_SUB_I,
-                                                          const_zero,
-                                                          num->val,
-                                                          IntegerType::getTypeInt());
+    UnaryInstruction * minusInst = new UnaryInstruction(module->getCurrentFunction(),
+                                                        IRInstOperator::IRINST_OP_MINUS_I,
+                                                        num->val,
+                                                        IntegerType::getTypeInt());
 
     node->blockInsts.addInst(num->blockInsts);
     node->blockInsts.addInst(minusInst);

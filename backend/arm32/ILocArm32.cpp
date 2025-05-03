@@ -230,7 +230,7 @@ void ILocArm32::inst(std::string op, std::string rs, std::string arg1)
     emit(op, rs, arg1);
 }
 
-/// @brief 一个操作数指令
+/// @brief 两个操作数指令
 /// @param op 操作码
 /// @param rs 操作数
 /// @param arg1 源操作数

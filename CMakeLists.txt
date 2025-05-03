@@ -157,6 +157,8 @@ set(IR_SRCS
 	ir/Generator/IRGenerator.h
 	ir/Instructions/ArgInstruction.cpp
 	ir/Instructions/ArgInstruction.h
+	ir/Instructions/UnaryInstruction.cpp
+	ir/Instructions/UnaryInstruction.h
 	ir/Instructions/BinaryInstruction.cpp
 	ir/Instructions/BinaryInstruction.h
 	ir/Instructions/EntryInstruction.cpp

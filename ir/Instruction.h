@@ -51,6 +51,9 @@ enum class IRInstOperator : std::int8_t {
 
     // TODO /* 后续可追加其他的IR指令 */
 
+    /// @brief 整数的求负指令，一元运算
+    IRINST_OP_MINUS_I,
+    
     /// @brief 整数的乘法指令，二元运算
     IRINST_OP_MUL_I,
 

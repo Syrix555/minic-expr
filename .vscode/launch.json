@@ -37,7 +37,7 @@
 			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/minic",
-			"args": ["-S", "-A", "-I", "-o", "tests/test3-2.ir", "tests/test3-2.c"],
+			"args": ["-S", "-A", "-I", "-o", "tests/test3-1.ir", "tests/test3-1.c"],
 			// 程序的入口（main函数的入口）是否停止
 			"stopAtEntry": true,
 			"cwd": "${workspaceFolder}",
@@ -115,7 +115,7 @@
 			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/minic",
-			"args": ["-S", "-A", "-o", "tests/test3-2.s", "tests/test3-2.c"],
+			"args": ["-S", "-A", "-o", "tests/test3-1.s", "tests/test3-1.c"],
 			"cwd": "${workspaceFolder}",
 			// 不需要编译时可注释掉
 			"preLaunchTask": "CMake: build"

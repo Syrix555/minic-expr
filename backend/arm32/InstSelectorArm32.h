@@ -16,6 +16,7 @@
 #pragma once
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include "Function.h"
@@ -76,6 +77,10 @@ protected:
     /// @param inst IR指令
     void translate_sub_int32(Instruction * inst);
 
+    /// @brief 整数求负指令翻译成ARM32汇编
+    /// @param inst IR指令
+    void translate_minus_int32(Instruction * inst);
+
     /// @brief 整数乘法指令翻译成ARM32汇编
     /// @param inst IR指令
     void translate_mul_int32(Instruction * inst);
@@ -87,6 +92,11 @@ protected:
     /// @brief 整数取余指令翻译成ARM32汇编
     /// @param inst IR指令
     void translate_mod_int32(Instruction * inst);
+
+    /// @brief 一元操作指令翻译成ARM32汇编
+    /// @param inst IR指令
+    /// @param parameter_name 操作码
+    void translate_one_operator(Instruction * inst, string operator_name);
 
     /// @brief 二元操作指令翻译成ARM32汇编
     /// @param inst IR指令
