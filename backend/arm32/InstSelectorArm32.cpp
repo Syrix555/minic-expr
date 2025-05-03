@@ -331,8 +331,84 @@ void InstSelectorArm32::translate_div_int32(Instruction * inst)
 /// @param inst IR指令
 void InstSelectorArm32::translate_mod_int32(Instruction * inst)
 {
-	// TODO 
-    // translate_two_operator(inst, "mod");
+    // 这里简单使用函数translate_two_operator()不现实，因为不可能只使用一条指令完成取余
+    // 故这里复用translate_two_operator()的结构进行多条二元运算指令的翻译
+    Value * result = inst;
+    Value * arg1 = inst->getOperand(0);			//dividend
+    Value * arg2 = inst->getOperand(1);			//divisor
+
+    int32_t arg1_reg_no = arg1->getRegId();
+    int32_t arg2_reg_no = arg2->getRegId();
+    int32_t result_reg_no = inst->getRegId();
+    int32_t load_dividend_reg_no, load_divisor_reg_no, load_result_reg_no, quotient_reg_no;
+
+    // 分配一个寄存器用于保存计算得到的商的值
+    quotient_reg_no = simpleRegisterAllocator.Allocate();
+
+    // 看arg1是否是寄存器，若是则寄存器寻址，否则要load被除数到寄存器中
+    if (arg1_reg_no == -1) {
+
+        // 分配一个寄存器r8
+        load_dividend_reg_no = simpleRegisterAllocator.Allocate(arg1);
+
+        // arg1 -> r8，这里可能由于偏移不满足指令的要求，需要额外分配寄存器
+        iloc.load_var(load_dividend_reg_no, arg1);
+    } else {
+        load_dividend_reg_no = arg1_reg_no;
+    }
+
+    // 看arg2是否是寄存器，若是则寄存器寻址，否则要load除数到寄存器中
+    if (arg2_reg_no == -1) {
+
+        // 分配一个寄存器r9
+        load_divisor_reg_no = simpleRegisterAllocator.Allocate(arg2);
+
+        // arg2 -> r9
+        iloc.load_var(load_divisor_reg_no, arg2);
+    } else {
+        load_divisor_reg_no = arg2_reg_no;
+    }
+
+    // 看结果变量是否是寄存器，若不是则需要分配一个新的寄存器来保存运算的结果
+    if (result_reg_no == -1) {
+        // 分配一个寄存器r10，用于暂存结果
+        load_result_reg_no = simpleRegisterAllocator.Allocate(result);
+    } else {
+        load_result_reg_no = result_reg_no;
+    }
+
+    // 首先执行sdiv求商
+    iloc.inst("sdiv",
+              PlatformArm32::regName[quotient_reg_no],
+              PlatformArm32::regName[load_dividend_reg_no],
+              PlatformArm32::regName[load_divisor_reg_no]);
+
+    // 接着计算商 * 除数
+    iloc.inst("mul",
+              PlatformArm32::regName[load_result_reg_no],
+              PlatformArm32::regName[quotient_reg_no],
+              PlatformArm32::regName[load_divisor_reg_no]);
+
+    // 最后计算余数，得到真正的结果
+    iloc.inst("sub",
+              PlatformArm32::regName[load_result_reg_no],
+              PlatformArm32::regName[load_dividend_reg_no],
+              PlatformArm32::regName[load_result_reg_no]);
+
+    // 结果不是寄存器，则需要把rs_reg_name保存到结果变量中
+    if (result_reg_no == -1) {
+
+        // 这里使用预留的临时寄存器，因为立即数可能过大，必须借助寄存器才可操作。
+
+        // r10 -> result
+        iloc.store_var(load_result_reg_no, result, ARM32_TMP_REG_NO);
+    }
+
+    // 释放寄存器
+    simpleRegisterAllocator.free(arg1);
+    simpleRegisterAllocator.free(arg2);
+    simpleRegisterAllocator.free(result);
+    simpleRegisterAllocator.free(quotient_reg_no);
 }
 
 /// @brief 函数调用指令翻译成ARM32汇编
