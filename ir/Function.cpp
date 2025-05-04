@@ -14,6 +14,7 @@
 /// </table>
 ///
 
+#include <cstdint>
 #include <cstdlib>
 #include <string>
 
@@ -287,6 +288,7 @@ void Function::renameIR()
     }
 
     int32_t nameIndex = 0;
+    int32_t labelNameIndex = 1;						// 避免标签索引与局部变量索引等混用，提升IR美观性
 
     // 形式参数重命名
     for (auto & param: this->params) {
@@ -302,7 +304,7 @@ void Function::renameIR()
     // 遍历所有的指令进行命名
     for (auto inst: this->getInterCode().getInsts()) {
         if (inst->getOp() == IRInstOperator::IRINST_OP_LABEL) {
-            inst->setIRName(IR_LABEL_PREFIX + std::to_string(nameIndex++));
+            inst->setIRName(IR_LABEL_PREFIX + std::to_string(labelNameIndex++));
         } else if (inst->hasResultValue()) {
             inst->setIRName(IR_TEMP_VARNAME_PREFIX + std::to_string(nameIndex++));
         }
