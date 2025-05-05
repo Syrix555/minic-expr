@@ -98,7 +98,7 @@ CompileUnit : FuncDef {
 	;
 
 // 函数定义，目前支持整数返回类型，不支持形参
-FuncDef : T_INT T_ID T_L_PAREN T_R_PAREN Block  {
+FuncDef : BasicType T_ID T_L_PAREN T_R_PAREN Block  {
 
 		// 函数返回类型
 		type_attr funcReturnType = $1;
@@ -180,6 +180,7 @@ VarDeclExpr: BasicType VarDef {
 
 		// 创建变量定义节点
 		ast_node * decl_node = create_contain_node(ast_operator_type::AST_OP_VAR_DECL, type_node, $2);
+		decl_node->type = type_node->type;
 
 		// 创建变量声明语句，并加入第一个变量
 		$$ = create_var_decl_stmt_node(decl_node);

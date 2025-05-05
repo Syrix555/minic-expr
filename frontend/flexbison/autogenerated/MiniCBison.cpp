@@ -537,9 +537,9 @@ static const yytype_int8 yytranslate[] =
 static const yytype_int16 yyrline[] =
 {
        0,    75,    75,    83,    89,    94,   101,   124,   130,   141,
-     146,   155,   159,   170,   176,   187,   201,   212,   221,   227,
-     233,   239,   245,   255,   265,   271,   277,   286,   289,   298,
-     304,   320,   339,   343,   349,   361,   365,   372
+     146,   155,   159,   170,   176,   188,   202,   213,   222,   228,
+     234,   240,   246,   256,   266,   272,   278,   287,   290,   299,
+     305,   321,   340,   344,   350,   362,   366,   373
 };
 #endif
 
@@ -1278,6 +1278,7 @@ yyreduce:
 
 		// 创建变量定义节点
 		ast_node * decl_node = create_contain_node(ast_operator_type::AST_OP_VAR_DECL, type_node, (yyvsp[0].node));
+		decl_node->type = type_node->type;
 
 		// 创建变量声明语句，并加入第一个变量
 		(yyval.node) = create_var_decl_stmt_node(decl_node);
