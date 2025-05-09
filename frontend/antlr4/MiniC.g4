@@ -42,20 +42,20 @@ statement:
 	| expr? T_SEMICOLON					# expressionStatement;
 
 // 表达式文法 expr : 表达式目前支持加法与减法，乘除法运算
-//expr: addExp;
-expr: 
-	  <assoc=left> expr mulOp expr 		# mulExp
-	| <assoc=left> expr addOp expr		# addExp
-	| unaryExp                          # unaryExpr ;
+expr: addExp;
+// expr:
+// 	  <assoc=left> expr mulOp expr 		# mulExp
+// 	| <assoc=left> expr addOp expr		# addExp
+// 	| unaryExp                          # unaryExpr ;
 
 // 加减表达式，将 unaryExp 修改为 mulExp ，表示 * / % 比 + - 更先
-//addExp: mulExp (addOp mulExp)*;
+addExp: mulExp (addOp mulExp)*;
 
 // 加减运算符
 addOp: T_ADD | T_SUB;
 
 // New: 乘除表达式
-//mulExp: unaryExp (mulOp unaryExp)*;
+mulExp: unaryExp (mulOp unaryExp)*;
 
 // New: 乘除运算符
 mulOp: T_MUL | T_DIV | T_MOD;

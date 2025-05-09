@@ -196,14 +196,9 @@ std::any MiniCCSTVisitor::visitReturnStatement(MiniCParser::ReturnStatementConte
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitExpr(MiniCParser::ExprContext * ctx)
 {
-    // 识别产生式：expr:
-    //   <assoc=left> expr mulOp expr 		# mulExp
-    // | <assoc=left> expr addOp expr		# addExp
-    // | unaryExp                          # unaryExpr ;
+    // 识别产生式：expr: addExp;
 
-    // 这里我使用了直接左递归的文法定义，无法通过传统的分发方式，因此这里使用antlr4提供的visit()进行分发
-    std::any res = visit(ctx);
-    return res;
+    return visitAddExp(ctx->addExp());
 }
 
 std::any MiniCCSTVisitor::visitAssignStatement(MiniCParser::AssignStatementContext * ctx)
@@ -229,15 +224,39 @@ std::any MiniCCSTVisitor::visitBlockStatement(MiniCParser::BlockStatementContext
 
 std::any MiniCCSTVisitor::visitMulExp(MiniCParser::MulExpContext * ctx)
 {
-    // 识别的文法产生式：mulExp: expr mulOp expr
-    auto left = std::any_cast<ast_node *>(visitExpr(ctx->expr(0)));
-    auto right = std::any_cast<ast_node *>(visitExpr(ctx->expr(1)));
+    // 识别的文法产生式：mulExp : unaryExp (mulOp unaryExp)*;
 
-    ast_operator_type op = std::any_cast<ast_operator_type>(visitMulOp(ctx->mulOp()));
+    if (ctx->mulOp().empty()) {
 
-    ast_node * node = ast_node::New(op, left, right, nullptr);
+        // 没有mulOp运算符，则说明闭包识别为0，只识别了第一个非终结符unaryExp
+        return visitUnaryExp(ctx->unaryExp()[0]);
+    }
 
-    return node;
+    ast_node *left, *right;
+
+    // 存在mulOp运算符，自
+    auto opsCtxVec = ctx->mulOp();
+
+    // 有操作符，肯定会进循环，使得right设置正确的值
+    for (int k = 0; k < (int) opsCtxVec.size(); k++) {
+
+        // 获取运算符
+        ast_operator_type op = std::any_cast<ast_operator_type>(visitMulOp(opsCtxVec[k]));
+
+        if (k == 0) {
+
+            // 左操作数
+            left = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()[k]));
+        }
+
+        // 右操作数
+        right = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()[k + 1]));
+
+        // 新建结点作为下一个运算符的右操作符
+        left = ast_node::New(op, left, right, nullptr);
+    }
+
+    return left;
 }
 
 std::any MiniCCSTVisitor::visitMulOp(MiniCParser::MulOpContext * ctx)
@@ -254,15 +273,39 @@ std::any MiniCCSTVisitor::visitMulOp(MiniCParser::MulOpContext * ctx)
 
 std::any MiniCCSTVisitor::visitAddExp(MiniCParser::AddExpContext * ctx)
 {
-    // 识别的文法产生式：addExp : expr addOp expr
-	auto left = std::any_cast<ast_node *>(visitExpr(ctx->expr(0)));
-    auto right = std::any_cast<ast_node *>(visitExpr(ctx->expr(1)));
+    // 识别的文法产生式：addExp : mulExp (addOp mulExp)*;
 
-    ast_operator_type op = std::any_cast<ast_operator_type>(visitAddOp(ctx->addOp()));
+    if (ctx->addOp().empty()) {
 
-    ast_node * node = ast_node::New(op, left, right, nullptr);
+        // 没有addOp运算符，则说明闭包识别为0，只识别了第一个非终结符mulExp
+        return visitMulExp(ctx->mulExp()[0]);
+    }
 
-    return node;
+    ast_node *left, *right;
+
+    // 存在addOp运算符，自
+    auto opsCtxVec = ctx->addOp();
+
+    // 有操作符，肯定会进循环，使得right设置正确的值
+    for (int k = 0; k < (int) opsCtxVec.size(); k++) {
+
+        // 获取运算符
+        ast_operator_type op = std::any_cast<ast_operator_type>(visitAddOp(opsCtxVec[k]));
+
+        if (k == 0) {
+
+            // 左操作数
+            left = std::any_cast<ast_node *>(visitMulExp(ctx->mulExp()[k]));
+        }
+
+        // 右操作数
+        right = std::any_cast<ast_node *>(visitMulExp(ctx->mulExp()[k + 1]));
+
+        // 新建结点作为下一个运算符的右操作符
+        left = ast_node::New(op, left, right, nullptr);
+    }
+
+    return left;
 
 }
 
@@ -281,7 +324,7 @@ std::any MiniCCSTVisitor::visitAddOp(MiniCParser::AddOpContext * ctx)
 
 std::any MiniCCSTVisitor::visitUnaryExp(MiniCParser::UnaryExpContext * ctx)
 {
-    // 识别文法产生式：unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN;
+    // 识别文法产生式：unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN | T_SUB unaryExp;
 
     if (ctx->primaryExp()) {
         // 普通表达式
@@ -303,6 +346,7 @@ std::any MiniCCSTVisitor::visitUnaryExp(MiniCParser::UnaryExpContext * ctx)
         // 创建函数调用节点，其孩子为被调用函数名和实参，
         return create_func_call(funcname_node, paramListNode);
     } else if (ctx->T_SUB()) {
+		// 识别到求负运算
         auto operandNode = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()));
 
         if (!operandNode) {

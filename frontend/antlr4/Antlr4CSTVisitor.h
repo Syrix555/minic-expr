@@ -75,7 +75,7 @@ protected:
     /// @brief 非终结运算符expr的遍历
     /// @param ctx CST上下文
     /// @return AST的节点
-    std::any visitExpr(MiniCParser::ExprContext * ctx);			//此时的MiniCBaseVisitor.h中并不存在这个函数，因此删除override
+    std::any visitExpr(MiniCParser::ExprContext * ctx) override;
 
     ///
     /// @brief 内部产生的非终结符assignStatement的分析

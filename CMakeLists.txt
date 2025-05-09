@@ -382,7 +382,7 @@ add_custom_command(TARGET ${PROJECT_NAME}
 )
 
 # 源代码打包
-set(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_SOURCE_GENERATOR "ZIP")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-src")
 
 # 忽略不需要源代码目录或文件
@@ -395,6 +395,22 @@ set(CPACK_SOURCE_IGNORE_FILES
 	"/frontend/antlr4/.antlr/;" # antlr自动产生的目录
 	"/.history/;" # 本地历史文件
 	"/tests/;" # 测试文件夹
+	"/thirdparty/;" # antlr
+	"/tools/;" # tools
+	"/cmake/;" # cmake
+	"/.vs/;" # visual studio
+	"/.vscode/;" # vscode
+	"/.cache/;" # cache
+	"/.git/" # 忽略 .git 目录
+	"/.clang-format$" # 忽略 .clang-format 文件
+	"/.clang-tidy$" # 忽略 .clang-tidy 文件
+	"/.gitignore$" # 忽略 .gitignore 文件
+	"/CMakeLists.txt" # 忽略 CMakeLists.txt 文件
+	"/CMakePresets-vs.json$" # 忽略 CMakePresets-vs.json
+	"/Doxygen.config$" # 忽略 Doxygen.config
+	"/latex_header.tex$" # 忽略 latex_header.tex
+	"/LICENSE$" # 忽略 LICENSE
+	"/README.md$" # 忽略 README.md
 )
 
 # 二进制打包
