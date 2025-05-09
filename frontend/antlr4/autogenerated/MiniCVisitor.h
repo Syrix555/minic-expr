@@ -1,5 +1,5 @@
 
-// Generated from MiniC.g4 by ANTLR 4.12.0
+// Generated from /home/syrix/compile/minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -45,6 +45,8 @@ public:
 
     virtual std::any visitExpr(MiniCParser::ExprContext *context) = 0;
 
+    virtual std::any visitCond(MiniCParser::CondContext *context) = 0;
+
     virtual std::any visitAddExp(MiniCParser::AddExpContext *context) = 0;
 
     virtual std::any visitAddOp(MiniCParser::AddOpContext *context) = 0;
@@ -52,6 +54,14 @@ public:
     virtual std::any visitMulExp(MiniCParser::MulExpContext *context) = 0;
 
     virtual std::any visitMulOp(MiniCParser::MulOpContext *context) = 0;
+
+    virtual std::any visitRelExp(MiniCParser::RelExpContext *context) = 0;
+
+    virtual std::any visitRelOp(MiniCParser::RelOpContext *context) = 0;
+
+    virtual std::any visitEqExp(MiniCParser::EqExpContext *context) = 0;
+
+    virtual std::any visitEqOp(MiniCParser::EqOpContext *context) = 0;
 
     virtual std::any visitUnaryExp(MiniCParser::UnaryExpContext *context) = 0;
 

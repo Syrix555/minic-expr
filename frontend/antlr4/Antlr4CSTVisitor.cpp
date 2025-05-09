@@ -144,11 +144,11 @@ std::any MiniCCSTVisitor::visitBlockItemList(MiniCParser::BlockItemListContext *
 ///
 std::any MiniCCSTVisitor::visitBlockItem(MiniCParser::BlockItemContext * ctx)
 {
-    // 识别的文法产生式：blockItem : statement | varDecl
-    if (ctx->statement()) {
+    // 识别的文法产生式：blockItem : stmt | varDecl
+    if (ctx->stmt()) {
         // 语句识别
 
-        return visitStatement(ctx->statement());
+        return visitStmt(ctx->stmt());
     } else if (ctx->varDecl()) {
         return visitVarDecl(ctx->varDecl());
     }
@@ -156,11 +156,11 @@ std::any MiniCCSTVisitor::visitBlockItem(MiniCParser::BlockItemContext * ctx)
     return nullptr;
 }
 
-/// @brief 非终结运算符statement中的遍历
+/// @brief 非终结运算符stmt中的遍历
 /// @param ctx CST上下文
-std::any MiniCCSTVisitor::visitStatement(MiniCParser::StatementContext * ctx)
+std::any MiniCCSTVisitor::visitStmt(MiniCParser::StmtContext * ctx)
 {
-    // 识别的文法产生式：statement: T_ID T_ASSIGN expr T_SEMICOLON  # assignStatement
+    // 识别的文法产生式：stmt: T_ID T_ASSIGN expr T_SEMICOLON  # assignStatement
     // | T_RETURN expr T_SEMICOLON # returnStatement
     // | block  # blockStatement
     // | expr ? T_SEMICOLON #expressionStatement;
@@ -178,7 +178,7 @@ std::any MiniCCSTVisitor::visitStatement(MiniCParser::StatementContext * ctx)
 }
 
 ///
-/// @brief 非终结运算符statement中的returnStatement的遍历
+/// @brief 非终结运算符stmt中的returnStatement的遍历
 /// @param ctx CST上下文
 ///
 std::any MiniCCSTVisitor::visitReturnStatement(MiniCParser::ReturnStatementContext * ctx)
@@ -196,11 +196,22 @@ std::any MiniCCSTVisitor::visitReturnStatement(MiniCParser::ReturnStatementConte
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitExpr(MiniCParser::ExprContext * ctx)
 {
-    // 识别产生式：expr: addExp;
+    // 识别产生式：expr: addExp
 
     return visitAddExp(ctx->addExp());
 }
 
+/// @brief 非终结符cond的遍历
+/// @param ctx
+std::any MiniCCSTVisitor::visitCond(MiniCParser::CondContext * ctx)
+{
+    // 识别产生式：cond: eqExp
+
+    return visitEqExp(ctx->eqExp());
+}
+
+/// @brief 内部产生的非终结符assignStatement的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitAssignStatement(MiniCParser::AssignStatementContext * ctx)
 {
     // 识别文法产生式：assignStatement: lVal T_ASSIGN expr T_SEMICOLON
@@ -215,6 +226,8 @@ std::any MiniCCSTVisitor::visitAssignStatement(MiniCParser::AssignStatementConte
     return ast_node::New(ast_operator_type::AST_OP_ASSIGN, lvalNode, exprNode, nullptr);
 }
 
+/// @brief 内部产生的非终结符blockStatement的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitBlockStatement(MiniCParser::BlockStatementContext * ctx)
 {
     // 识别文法产生式 blockStatement: block
@@ -222,6 +235,8 @@ std::any MiniCCSTVisitor::visitBlockStatement(MiniCParser::BlockStatementContext
     return visitBlock(ctx->block());
 }
 
+/// @brief 非终结符mulExp的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitMulExp(MiniCParser::MulExpContext * ctx)
 {
     // 识别的文法产生式：mulExp : unaryExp (mulOp unaryExp)*;
@@ -259,6 +274,8 @@ std::any MiniCCSTVisitor::visitMulExp(MiniCParser::MulExpContext * ctx)
     return left;
 }
 
+/// @brief 非终结符mulOp的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitMulOp(MiniCParser::MulOpContext * ctx)
 {
     // 识别的文法产生式：mulOp: T_MUL | T_DIV | T_MOD
@@ -271,6 +288,8 @@ std::any MiniCCSTVisitor::visitMulOp(MiniCParser::MulOpContext * ctx)
 	}
 }
 
+/// @brief 非终结符AddExp的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitAddExp(MiniCParser::AddExpContext * ctx)
 {
     // 识别的文法产生式：addExp : mulExp (addOp mulExp)*;
@@ -322,6 +341,108 @@ std::any MiniCCSTVisitor::visitAddOp(MiniCParser::AddOpContext * ctx)
     }
 }
 
+/// @brief 非终结符relExp的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitRelExp(MiniCParser::RelExpContext * ctx)
+{
+    // 识别的文法产生式：relExp: addExp (relOp addExp)*
+
+    if (ctx->relOp().empty()) {
+        // 没有relOp运算符，则说明闭包识别为0，只识别了第一个非终结符addExp
+        return visitAddExp(ctx->addExp()[0]);
+    }
+
+	ast_node *left, *right;
+
+    // 存在relOp的情况下，进行自动转化
+    auto opsCtxVec = ctx->relOp();
+
+    // 有操作符，必定会进入循环，为right设置正确的值
+    for (int k = 0; k < (int) opsCtxVec.size(); k++) {
+
+        // 获取运算符
+        ast_operator_type op = std::any_cast<ast_operator_type>(visitRelOp(opsCtxVec[k]));
+
+        if (k == 0) {
+            // 左操作数
+            left = std::any_cast<ast_node *>(visitAddExp(ctx->addExp()[k]));
+        }
+
+        // 右操作数
+        right = std::any_cast<ast_node *>(visitAddExp(ctx->addExp()[k + 1]));
+
+        // 新建结点作为下一个运算符的右操作符
+        left = ast_node::New(op, left, right, nullptr);
+    }
+
+    return left;
+}
+
+/// @brief 非终结符relOp的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitRelOp(MiniCParser::RelOpContext * ctx)
+{
+    if (ctx->T_LT()) {
+        return ast_operator_type::AST_OP_LT;
+    } else if (ctx->T_GT()) {
+        return ast_operator_type::AST_OP_GT;
+    } else if (ctx->T_LE()) {
+        return ast_operator_type::AST_OP_LE;
+    } else {
+        return ast_operator_type::AST_OP_GE;
+	}
+}
+
+/// @brief 非终结符eqExp的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitEqExp(MiniCParser::EqExpContext * ctx)
+{
+    // 识别的文法产生式：eqExp: relExp (eqOp relExp)*
+
+    if (ctx->eqOp().empty()) {
+        // 没有eqOp运算符，则说明闭包识别为0，只识别了第一个非终结符relExp
+        return visitRelExp(ctx->relExp()[0]);
+    }
+
+	ast_node *left, *right;
+
+    // 存在eqOp的情况下，进行自动转化
+    auto opsCtxVec = ctx->eqOp();
+
+    // 有操作符，必定会进入循环，为right设置正确的值
+    for (int k = 0; k < (int) opsCtxVec.size(); k++) {
+
+        // 获取运算符
+        ast_operator_type op = std::any_cast<ast_operator_type>(visitEqOp(opsCtxVec[k]));
+
+        if (k == 0) {
+            // 左操作数
+            left = std::any_cast<ast_node *>(visitRelExp(ctx->relExp()[k]));
+        }
+
+        // 右操作数
+        right = std::any_cast<ast_node *>(visitRelExp(ctx->relExp()[k + 1]));
+
+        // 新建结点作为下一个运算符的右操作符
+        left = ast_node::New(op, left, right, nullptr);
+    }
+
+    return left;
+}
+
+/// @brief 非终结符eqOp的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitEqOp(MiniCParser::EqOpContext * ctx)
+{
+    if (ctx->T_EQ()) {
+        return ast_operator_type::AST_OP_EQ;
+    } else {
+        return ast_operator_type::AST_OP_NEQ;
+	}
+}
+
+/// @brief 非终结符unaryExp的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitUnaryExp(MiniCParser::UnaryExpContext * ctx)
 {
     // 识别文法产生式：unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN | T_SUB unaryExp;
@@ -364,6 +485,8 @@ std::any MiniCCSTVisitor::visitUnaryExp(MiniCParser::UnaryExpContext * ctx)
     }
 }
 
+/// @brief 非终结符PrimaryExp的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitPrimaryExp(MiniCParser::PrimaryExpContext * ctx)
 {
     // 识别文法产生式 primaryExp: T_L_PAREN expr T_R_PAREN | T_DIGIT | lVal;
@@ -389,6 +512,8 @@ std::any MiniCCSTVisitor::visitPrimaryExp(MiniCParser::PrimaryExpContext * ctx)
     return node;
 }
 
+/// @brief 非终结符LVal的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitLVal(MiniCParser::LValContext * ctx)
 {
     // 识别文法产生式：lVal: T_ID;
@@ -401,6 +526,8 @@ std::any MiniCCSTVisitor::visitLVal(MiniCParser::LValContext * ctx)
     return ast_node::New(varId, lineNo);
 }
 
+/// @brief 非终结符VarDecl的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
 {
     // varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON;
@@ -428,6 +555,8 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
     return stmt_node;
 }
 
+/// @brief 非终结符VarDecl的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
 {
     // varDef: T_ID;
@@ -440,6 +569,8 @@ std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
     return ast_node::New(varId, lineNo);
 }
 
+/// @brief 非终结符BasicType的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitBasicType(MiniCParser::BasicTypeContext * ctx)
 {
     // basicType: T_INT;
@@ -452,6 +583,8 @@ std::any MiniCCSTVisitor::visitBasicType(MiniCParser::BasicTypeContext * ctx)
     return attr;
 }
 
+/// @brief 非终结符RealParamList的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitRealParamList(MiniCParser::RealParamListContext * ctx)
 {
     // 识别的文法产生式：realParamList : expr (T_COMMA expr)*;
@@ -468,6 +601,8 @@ std::any MiniCCSTVisitor::visitRealParamList(MiniCParser::RealParamListContext *
     return paramListNode;
 }
 
+/// @brief 非终结符ExpressionStatement的分析
+/// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitExpressionStatement(MiniCParser::ExpressionStatementContext * ctx)
 {
     // 识别文法产生式  expr ? T_SEMICOLON #expressionStatement;

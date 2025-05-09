@@ -99,6 +99,24 @@ enum class ast_operator_type : int {
     /// @brief 二元运算符%
     AST_OP_MOD,
 
+    /// @brief 关系运算符<
+    AST_OP_LT,
+
+    /// @brief 关系运算符>
+    AST_OP_GT,
+
+    /// @brief 关系运算符<=
+    AST_OP_LE,
+
+    /// @brief 关系运算符>=
+    AST_OP_GE,
+
+    /// @brief 相等性运算符==
+    AST_OP_EQ,
+
+    /// @brief 相等性运算符!=
+    AST_OP_NEQ,
+
     /// @brief 最大标识符，表示非法运算符
     AST_OP_MAX,
 };

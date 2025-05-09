@@ -6,7 +6,7 @@ grammar MiniC;
 
 // 每个非终结符尽量多包含闭包、正闭包或可选符等的EBNF范式描述
 
-// 若非终结符由多个产生式组成，则建议在每个产生式的尾部追加# 名称来区分，详细可查看非终结符statement的描述
+// 若非终结符由多个产生式组成，则建议在每个产生式的尾部追加# 名称来区分，详细可查看非终结符stmt的描述
 
 // 语法规则描述：EBNF范式
 
@@ -23,7 +23,7 @@ block: T_L_BRACE blockItemList? T_R_BRACE;
 blockItemList: blockItem+;
 
 // 每个Item可以是一个语句，或者变量声明语句
-blockItem: statement | varDecl;
+blockItem: stmt | varDecl;
 
 // 变量声明，目前不支持变量含有初值
 varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON;
@@ -35,7 +35,7 @@ basicType: T_INT;
 varDef: T_ID;
 
 // 目前语句支持return和赋值语句
-statement:
+stmt:
 	T_RETURN expr T_SEMICOLON			# returnStatement
 	| lVal T_ASSIGN expr T_SEMICOLON	# assignStatement
 	| block								# blockStatement
@@ -43,10 +43,9 @@ statement:
 
 // 表达式文法 expr : 表达式目前支持加法与减法，乘除法运算
 expr: addExp;
-// expr:
-// 	  <assoc=left> expr mulOp expr 		# mulExp
-// 	| <assoc=left> expr addOp expr		# addExp
-// 	| unaryExp                          # unaryExpr ;
+
+// 条件表达式 cond : 目前支持关系表达式与相等性表达式
+cond: eqExp;
 
 // 加减表达式，将 unaryExp 修改为 mulExp ，表示 * / % 比 + - 更先
 addExp: mulExp (addOp mulExp)*;
@@ -54,16 +53,33 @@ addExp: mulExp (addOp mulExp)*;
 // 加减运算符
 addOp: T_ADD | T_SUB;
 
-// New: 乘除表达式
+// 乘除表达式
 mulExp: unaryExp (mulOp unaryExp)*;
 
-// New: 乘除运算符
+// 乘除运算符
 mulOp: T_MUL | T_DIV | T_MOD;
 
+// 关系表达式
+relExp: addExp (relOp addExp)*;
+
+// 关系运算符
+relOp: T_LT | T_GT | T_LE | T_GE;
+
+// 相等性表达式
+eqExp: relExp (eqOp relExp)*;
+
+// 相等性运算符
+eqOp: T_EQ | T_NEQ;
+
+// if语句
+// ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt T_ELSE stmt				#ifElse
+// 	    | T_IF T_L_PAREN cond T_R_PAREN stmt						#ifOnly;
+
 // 一元表达式
-unaryExp: primaryExp | 
-		  T_ID T_L_PAREN realParamList? T_R_PAREN |
-		  T_SUB unaryExp;
+unaryExp:
+	primaryExp
+	| T_ID T_L_PAREN realParamList? T_R_PAREN
+	| T_SUB unaryExp;
 
 // 基本表达式：括号表达式、整数、左值表达式
 primaryExp: T_L_PAREN expr T_R_PAREN | T_DIGIT | lVal;
@@ -91,10 +107,20 @@ T_MUL: '*';
 T_DIV: '/';
 T_MOD: '%';
 
+T_LT: '<';
+T_GT: '>';
+T_LE: '<=';
+T_GE: '>=';
+
+T_EQ: '==';
+T_NEQ: '!=';
+
 // 要注意关键字同样也属于T_ID，因此必须放在T_ID的前面，否则会识别成T_ID
 T_RETURN: 'return';
 T_INT: 'int';
 T_VOID: 'void';
+T_IF: 'if';
+T_ELSE: 'else';
 
 T_ID: [a-zA-Z_][a-zA-Z0-9_]*;
 T_DIGIT: '0' [xX] [0-9a-fA-F]+ |

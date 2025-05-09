@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
 # 设置工程属性，如版本，开发语言等
-project(minic VERSION 1.0.1 LANGUAGES CXX)
+project(minic VERSION 1.1.0 LANGUAGES CXX)
 
 # 是否输出Bison语法分析时是否输出自动机， 默认不输出
 # 如果修改为ON，请删除build后重新构建程序

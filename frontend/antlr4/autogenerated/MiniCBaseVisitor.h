@@ -1,5 +1,5 @@
 
-// Generated from MiniC.g4 by ANTLR 4.12.0
+// Generated from /home/syrix/compile/minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -67,6 +67,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitCond(MiniCParser::CondContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitAddExp(MiniCParser::AddExpContext *ctx) override {
     return visitChildren(ctx);
   }
@@ -80,6 +84,22 @@ public:
   }
 
   virtual std::any visitMulOp(MiniCParser::MulOpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitRelExp(MiniCParser::RelExpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitRelOp(MiniCParser::RelOpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitEqExp(MiniCParser::EqExpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitEqOp(MiniCParser::EqOpContext *ctx) override {
     return visitChildren(ctx);
   }
 
