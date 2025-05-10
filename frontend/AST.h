@@ -117,6 +117,9 @@ enum class ast_operator_type : int {
     /// @brief 相等性运算符!=
     AST_OP_NEQ,
 
+    /// @brief if语句
+    AST_OP_IF,
+
     /// @brief 最大标识符，表示非法运算符
     AST_OP_MAX,
 };

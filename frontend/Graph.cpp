@@ -109,6 +109,9 @@ string getNodeName(ast_node * astnode)
         case ast_operator_type::AST_OP_NEQ:
             nodeName = "!=";
             break;
+        case ast_operator_type::AST_OP_IF:
+            nodeName = "if";
+            break;
         default:
             nodeName = "unknown";
             break;

@@ -163,7 +163,8 @@ std::any MiniCCSTVisitor::visitStmt(MiniCParser::StmtContext * ctx)
     // 识别的文法产生式：stmt: T_ID T_ASSIGN expr T_SEMICOLON  # assignStatement
     // | T_RETURN expr T_SEMICOLON # returnStatement
     // | block  # blockStatement
-    // | expr ? T_SEMICOLON #expressionStatement;
+    // | expr ? T_SEMICOLON #expressionStatement
+    // | ifStmt	# ifStatement;
     if (Instanceof(assignCtx, MiniCParser::AssignStatementContext *, ctx)) {
         return visitAssignStatement(assignCtx);
     } else if (Instanceof(returnCtx, MiniCParser::ReturnStatementContext *, ctx)) {
@@ -172,7 +173,9 @@ std::any MiniCCSTVisitor::visitStmt(MiniCParser::StmtContext * ctx)
         return visitBlockStatement(blockCtx);
     } else if (Instanceof(exprCtx, MiniCParser::ExpressionStatementContext *, ctx)) {
         return visitExpressionStatement(exprCtx);
-    }
+    } else if (Instanceof(ifCtx, MiniCParser::IfStatementContext *, ctx)) {
+        return visitIfStatement(ifCtx);
+	}
 
     return nullptr;
 }
@@ -190,6 +193,15 @@ std::any MiniCCSTVisitor::visitReturnStatement(MiniCParser::ReturnStatementConte
 
     // 创建返回节点，其孩子为Expr
     return create_contain_node(ast_operator_type::AST_OP_RETURN, exprNode);
+}
+
+/// @brief 内部产生的非终结符ifStatement的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitIfStatement(MiniCParser::IfStatementContext * ctx)
+{
+	// 识别产生式：stmt: ifStmt
+
+    return visitIfStmt(ctx->ifStmt());
 }
 
 /// @brief 非终结运算符expr的遍历
@@ -439,6 +451,37 @@ std::any MiniCCSTVisitor::visitEqOp(MiniCParser::EqOpContext * ctx)
     } else {
         return ast_operator_type::AST_OP_NEQ;
 	}
+}
+
+/// @brief 非终结符ifStmt的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitIfStmt(MiniCParser::IfStmtContext * ctx)
+{
+    // 识别文法产生式：ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt (T_ELSE stmt)?
+
+    // 首先识别cond条件表达式
+    ast_node * condNode = std::any_cast<ast_node *>(visitCond(ctx->cond()));
+
+    // 然后识别条件为真的语句块
+    ast_node * thenNode = std::any_cast<ast_node *>(visitStmt(ctx->stmt(0)));
+
+    // 最后识别可选的else语句块
+    ast_node * elseNode = nullptr;
+	// 检查是否有else
+    if (ctx->T_ELSE() != nullptr) {
+        // 再检查ctx是否有多个stmt
+        if (ctx->stmt().size() > 1 && ctx->stmt(1)) {
+            elseNode = std::any_cast<ast_node *>(visitStmt(ctx->stmt(1)));
+		}
+    }
+
+    // 创建AST节点
+    ast_node * ifNode = create_contain_node(ast_operator_type::AST_OP_IF,
+                                            condNode,
+                                            thenNode,
+                                            elseNode);
+
+    return ifNode;
 }
 
 /// @brief 非终结符unaryExp的分析

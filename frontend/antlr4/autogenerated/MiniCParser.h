@@ -1,5 +1,5 @@
 
-// Generated from /home/syrix/compile/minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
+// Generated from MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -24,8 +24,8 @@ public:
     RuleBlockItem = 4, RuleVarDecl = 5, RuleBasicType = 6, RuleVarDef = 7, 
     RuleStmt = 8, RuleExpr = 9, RuleCond = 10, RuleAddExp = 11, RuleAddOp = 12, 
     RuleMulExp = 13, RuleMulOp = 14, RuleRelExp = 15, RuleRelOp = 16, RuleEqExp = 17, 
-    RuleEqOp = 18, RuleUnaryExp = 19, RulePrimaryExp = 20, RuleRealParamList = 21, 
-    RuleLVal = 22
+    RuleEqOp = 18, RuleIfStmt = 19, RuleUnaryExp = 20, RulePrimaryExp = 21, 
+    RuleRealParamList = 22, RuleLVal = 23
   };
 
   explicit MiniCParser(antlr4::TokenStream *input);
@@ -64,6 +64,7 @@ public:
   class RelOpContext;
   class EqExpContext;
   class EqOpContext;
+  class IfStmtContext;
   class UnaryExpContext;
   class PrimaryExpContext;
   class RealParamListContext;
@@ -245,6 +246,15 @@ public:
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
+  class  IfStatementContext : public StmtContext {
+  public:
+    IfStatementContext(StmtContext *ctx);
+
+    IfStmtContext *ifStmt();
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+  };
+
   StmtContext* stmt();
 
   class  ExprContext : public antlr4::ParserRuleContext {
@@ -395,6 +405,25 @@ public:
   };
 
   EqOpContext* eqOp();
+
+  class  IfStmtContext : public antlr4::ParserRuleContext {
+  public:
+    IfStmtContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *T_IF();
+    antlr4::tree::TerminalNode *T_L_PAREN();
+    CondContext *cond();
+    antlr4::tree::TerminalNode *T_R_PAREN();
+    std::vector<StmtContext *> stmt();
+    StmtContext* stmt(size_t i);
+    antlr4::tree::TerminalNode *T_ELSE();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  IfStmtContext* ifStmt();
 
   class  UnaryExpContext : public antlr4::ParserRuleContext {
   public:

@@ -94,6 +94,13 @@ protected:
     ///
     std::any visitExpressionStatement(MiniCParser::ExpressionStatementContext * context) override;
 
+    ///
+    /// @brief 内部产生的非终结符ifStatement的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+    std::any visitIfStatement(MiniCParser::IfStatementContext * ctx) override;
+
     /// @brief 非终结符expr的遍历
     /// @param ctx CST上下文
     /// @return AST的节点
@@ -160,7 +167,14 @@ protected:
 	/// @param ctx CST上下文
 	/// @return std::any 类型
 	///
-	std::any visitEqOp(MiniCParser::EqOpContext *ctx) override;
+	std::any visitEqOp(MiniCParser::EqOpContext * ctx) override;
+
+    ///
+    /// @brief 非终结符ifStmt的分析
+    /// @param ctx CST上下文
+    /// @return std::any 类型
+    ///
+    std::any visitIfStmt(MiniCParser::IfStmtContext * ctx) override;
 
     ///
     /// @brief 非终结符unaryExp的分析

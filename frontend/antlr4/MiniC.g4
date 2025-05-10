@@ -39,7 +39,8 @@ stmt:
 	T_RETURN expr T_SEMICOLON			# returnStatement
 	| lVal T_ASSIGN expr T_SEMICOLON	# assignStatement
 	| block								# blockStatement
-	| expr? T_SEMICOLON					# expressionStatement;
+	| expr? T_SEMICOLON					# expressionStatement
+	| ifStmt							# ifStatement;
 
 // 表达式文法 expr : 表达式目前支持加法与减法，乘除法运算
 expr: addExp;
@@ -72,8 +73,7 @@ eqExp: relExp (eqOp relExp)*;
 eqOp: T_EQ | T_NEQ;
 
 // if语句
-// ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt T_ELSE stmt				#ifElse
-// 	    | T_IF T_L_PAREN cond T_R_PAREN stmt						#ifOnly;
+ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt (T_ELSE stmt)?;
 
 // 一元表达式
 unaryExp:
