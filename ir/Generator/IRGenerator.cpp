@@ -66,6 +66,7 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     /* 语句 */
     ast2ir_handlers[ast_operator_type::AST_OP_ASSIGN] = &IRGenerator::ir_assign;
     ast2ir_handlers[ast_operator_type::AST_OP_RETURN] = &IRGenerator::ir_return;
+    ast2ir_handlers[ast_operator_type::AST_OP_IF] = &IRGenerator::ir_if;
 
     /* 函数调用 */
     ast2ir_handlers[ast_operator_type::AST_OP_FUNC_CALL] = &IRGenerator::ir_function_call;
@@ -876,6 +877,28 @@ bool IRGenerator::ir_cmp_ne(ast_node * node)
     node->val = addInst;
 
     return true;
+}
+
+/// @brief if语句块翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_if(ast_node * node)
+{
+    ast_node * true_node = node->sons[1];
+
+    // 获取当前作用域使用的函数
+    Function * currentFunc = module->getCurrentFunction();
+    
+    // 先分别创建三个Label：真入口、假入口、分支出口
+    LabelInstruction * trueLabel = new LabelInstruction(currentFunc);
+    LabelInstruction * falseLabel = new LabelInstruction(currentFunc);
+    LabelInstruction * ifExitLabel = new LabelInstruction(currentFunc);
+
+    // 获取cond节点，并生成线性IR
+    ast_node * cond_node = node->sons[0];
+    ir_visit_ast_node(cond_node);
+    // TODO 条件跳转语句相关实现
+    
 }
 
 /// @brief 赋值AST节点翻译成线性中间IR
