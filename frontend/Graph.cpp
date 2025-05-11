@@ -15,9 +15,11 @@
 /// </table>
 ///
 
+#include <cstddef>
 #include <vector>
 
 #include "AST.h"
+#include "cgraph.h"
 
 using namespace std;
 
@@ -123,6 +125,9 @@ string getNodeName(ast_node * astnode)
 /// @brief AST遍历的函数类型声明
 Agnode_t * graph_visit_ast_node(Agraph_t *, ast_node *);
 
+/// @brief 对if节点的二/三个子节点插入标签的特异化处理
+void handleIfNodeEdges(Agraph_t * g, Agnode_t * node, std::vector<Agnode_t *> &son_nodes);
+
 /// @brief 叶子节点图形产生
 /// @param g graphviz的Agraph_t
 /// @param astnode 叶子节点
@@ -193,22 +198,46 @@ Agnode_t * genInternalGraphNode(Agraph_t * g, ast_node * astnode)
         agsafeset(node, (char *) "label", (char *) nodeName.c_str(), (char *) "");
         agsafeset(node, (char *) "shape", (char *) "ellipse", (char *) "");
 
-        // 本结点与孩子按照自左往右构造图形的边agedge
-        // 这里演示C++的另外一种遍历方式，采用C++的新语法for
-        // 如果指针类型可不用引用，否则请用引用，避免C++的复制操作带来的性能损失
-        // 利用C++的auto关键字，让编译器自动推导类型
-        for (auto son_node: son_nodes) {
+        if (nodeName == "if") {
+			// 对if节点的三个子节点的特异化处理
+            handleIfNodeEdges(g, node, son_nodes);
+        } else {
+            // 本结点与孩子按照自左往右构造图形的边agedge
+        	// 这里演示C++的另外一种遍历方式，采用C++的新语法for
+        	// 如果指针类型可不用引用，否则请用引用，避免C++的复制操作带来的性能损失
+        	// 利用C++的auto关键字，让编译器自动推导类型
+        	for (auto son_node: son_nodes) {
 
-            // 创建一条边，关联两个节点，假定A和B，边为AB，边没有指定名字，则由函数内部创建唯一名称
-            // 第二个参数：边的第一个节点A
-            // 第二个参数：边的第二个节点B
-            // 第三个参数：指定边的名字，用于定位，这里不需要，指定空即可
-            // 第四个参数：若为1，则指定名称的边不存在则创建；若为0，则指定的名称的边不创建
-            agedge(g, node, son_node, (char *) nullptr, 1);
-        }
+            	// 创建一条边，关联两个节点，假定A和B，边为AB，边没有指定名字，则由函数内部创建唯一名称
+            	// 第二个参数：边的第一个节点A
+            	// 第二个参数：边的第二个节点B
+            	// 第三个参数：指定边的名字，用于定位，这里不需要，指定空即可
+            	// 第四个参数：若为1，则指定名称的边不存在则创建；若为0，则指定的名称的边不创建
+            	agedge(g, node, son_node, (char *) nullptr, 1);
+        	}
+		}
     }
 
     return node;
+}
+
+/// @brief 对if节点的二/三个子节点插入标签的特异化处理
+/// @param g
+/// @param node
+/// @param son_nodes
+void handleIfNodeEdges(Agraph_t * g, Agnode_t * node, std::vector<Agnode_t *> & son_nodes)
+{
+    for (size_t i = 0; i < son_nodes.size(); ++i) {
+        Agnode_t * son_node = son_nodes[i];
+		Agedge_t * edge = agedge(g, node, son_node, (char *) nullptr, 1);
+        if (i == 0) {
+            agsafeset(edge, (char *) "label", (char *)"cond", (char *) "");
+        } else if (i == 1) {
+            agsafeset(edge, (char *) "label", (char *)"then", (char *) "");
+		} else if (i == 2) {
+            agsafeset(edge, (char *) "label", (char *)"else", (char *) "");
+		}
+	}
 }
 
 /// @brief 遍历抽象语法树节点产生图片，递归
