@@ -73,37 +73,37 @@ void BinaryInstruction::toString(std::string & str)
         case IRInstOperator::IRINST_OP_LT_I:
 
             // 关系运算<，二元运算
-            str = getIRName() + " = cmp lt " + src1->getIRName() + ", " + src2->getIRName();
+            str = getIRName() + " = icmp lt " + src1->getIRName() + ", " + src2->getIRName();
             break;
 
 		case IRInstOperator::IRINST_OP_GT_I:
 
             // 关系运算>，二元运算
-            str = getIRName() + " = cmp gt " + src1->getIRName() + ", " + src2->getIRName();
+            str = getIRName() + " = icmp gt " + src1->getIRName() + ", " + src2->getIRName();
             break;
 
 		case IRInstOperator::IRINST_OP_LE_I:
 
             // 关系运算<=，二元运算
-            str = getIRName() + " = cmp le " + src1->getIRName() + ", " + src2->getIRName();
+            str = getIRName() + " = icmp le " + src1->getIRName() + ", " + src2->getIRName();
             break;
 
 		case IRInstOperator::IRINST_OP_GE_I:
 
             // 关系运算>=，二元运算
-            str = getIRName() + " = cmp ge " + src1->getIRName() + ", " + src2->getIRName();
+            str = getIRName() + " = icmp ge " + src1->getIRName() + ", " + src2->getIRName();
             break;
 
 		case IRInstOperator::IRINST_OP_EQ_I:
 
             // 相等性运算==，二元运算
-            str = getIRName() + " = cmp eq " + src1->getIRName() + ", " + src2->getIRName();
+            str = getIRName() + " = icmp eq " + src1->getIRName() + ", " + src2->getIRName();
             break;
 
 		case IRInstOperator::IRINST_OP_NE_I:
 
             // 相等性运算!=，二元运算
-            str = getIRName() + " = cmp ne " + src1->getIRName() + ", " + src2->getIRName();
+            str = getIRName() + " = icmp ne " + src1->getIRName() + ", " + src2->getIRName();
             break;
 
         default:
