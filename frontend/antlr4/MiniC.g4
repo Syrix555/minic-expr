@@ -70,7 +70,7 @@ relOp: T_LT | T_GT | T_LE | T_GE;
 eqExp: relExp (eqOp relExp)*;
 
 // 相等性运算符
-eqOp: T_EQ | T_NEQ;
+eqOp: T_EQ | T_NE;
 
 // if语句
 ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt (T_ELSE stmt)?;
@@ -113,7 +113,7 @@ T_LE: '<=';
 T_GE: '>=';
 
 T_EQ: '==';
-T_NEQ: '!=';
+T_NE: '!=';
 
 // 要注意关键字同样也属于T_ID，因此必须放在T_ID的前面，否则会识别成T_ID
 T_RETURN: 'return';

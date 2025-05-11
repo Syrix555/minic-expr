@@ -14,7 +14,7 @@ public:
   enum {
     T_L_PAREN = 1, T_R_PAREN = 2, T_SEMICOLON = 3, T_L_BRACE = 4, T_R_BRACE = 5, 
     T_ASSIGN = 6, T_COMMA = 7, T_ADD = 8, T_SUB = 9, T_MUL = 10, T_DIV = 11, 
-    T_MOD = 12, T_LT = 13, T_GT = 14, T_LE = 15, T_GE = 16, T_EQ = 17, T_NEQ = 18, 
+    T_MOD = 12, T_LT = 13, T_GT = 14, T_LE = 15, T_GE = 16, T_EQ = 17, T_NE = 18, 
     T_RETURN = 19, T_INT = 20, T_VOID = 21, T_IF = 22, T_ELSE = 23, T_ID = 24, 
     T_DIGIT = 25, WS = 26
   };
@@ -397,7 +397,7 @@ public:
     EqOpContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *T_EQ();
-    antlr4::tree::TerminalNode *T_NEQ();
+    antlr4::tree::TerminalNode *T_NE();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;

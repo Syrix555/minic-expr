@@ -50,7 +50,7 @@ void miniclexerLexerInitialize() {
     std::vector<std::string>{
       "T_L_PAREN", "T_R_PAREN", "T_SEMICOLON", "T_L_BRACE", "T_R_BRACE", 
       "T_ASSIGN", "T_COMMA", "T_ADD", "T_SUB", "T_MUL", "T_DIV", "T_MOD", 
-      "T_LT", "T_GT", "T_LE", "T_GE", "T_EQ", "T_NEQ", "T_RETURN", "T_INT", 
+      "T_LT", "T_GT", "T_LE", "T_GE", "T_EQ", "T_NE", "T_RETURN", "T_INT", 
       "T_VOID", "T_IF", "T_ELSE", "T_ID", "T_DIGIT", "WS"
     },
     std::vector<std::string>{
@@ -67,7 +67,7 @@ void miniclexerLexerInitialize() {
     std::vector<std::string>{
       "", "T_L_PAREN", "T_R_PAREN", "T_SEMICOLON", "T_L_BRACE", "T_R_BRACE", 
       "T_ASSIGN", "T_COMMA", "T_ADD", "T_SUB", "T_MUL", "T_DIV", "T_MOD", 
-      "T_LT", "T_GT", "T_LE", "T_GE", "T_EQ", "T_NEQ", "T_RETURN", "T_INT", 
+      "T_LT", "T_GT", "T_LE", "T_GE", "T_EQ", "T_NE", "T_RETURN", "T_INT", 
       "T_VOID", "T_IF", "T_ELSE", "T_ID", "T_DIGIT", "WS"
     }
   );

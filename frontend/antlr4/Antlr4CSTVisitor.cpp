@@ -449,7 +449,7 @@ std::any MiniCCSTVisitor::visitEqOp(MiniCParser::EqOpContext * ctx)
     if (ctx->T_EQ()) {
         return ast_operator_type::AST_OP_EQ;
     } else {
-        return ast_operator_type::AST_OP_NEQ;
+        return ast_operator_type::AST_OP_NE;
 	}
 }
 

@@ -115,7 +115,7 @@ enum class ast_operator_type : int {
     AST_OP_EQ,
 
     /// @brief 相等性运算符!=
-    AST_OP_NEQ,
+    AST_OP_NE,
 
     /// @brief if语句
     AST_OP_IF,

@@ -108,7 +108,7 @@ string getNodeName(ast_node * astnode)
         case ast_operator_type::AST_OP_EQ:
             nodeName = "==";
             break;
-        case ast_operator_type::AST_OP_NEQ:
+        case ast_operator_type::AST_OP_NE:
             nodeName = "!=";
             break;
         case ast_operator_type::AST_OP_IF:
