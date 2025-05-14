@@ -45,8 +45,8 @@ stmt:
 // 表达式文法 expr : 表达式目前支持加法与减法，乘除法运算
 expr: addExp;
 
-// 条件表达式 cond : 目前支持关系表达式与相等性表达式
-cond: eqExp;
+// 条件表达式 cond : 目前支持关系表达式、相等性表达式和逻辑表达式
+cond: lOrExp;
 
 // 加减表达式，将 unaryExp 修改为 mulExp ，表示 * / % 比 + - 更先
 addExp: mulExp (addOp mulExp)*;
@@ -72,6 +72,18 @@ eqExp: relExp (eqOp relExp)*;
 // 相等性运算符
 eqOp: T_EQ | T_NE;
 
+// 逻辑与表达式
+lAndExp: eqExp (lAndOp eqExp)*;
+
+// 逻辑与运算符
+lAndOp: T_AND;
+
+// 逻辑或表达式
+lOrExp: lAndExp (lOrOp lAndExp)*;
+
+// 逻辑或运算符
+lOrOp: T_OR;
+
 // if语句
 ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt (T_ELSE stmt)?;
 
@@ -79,7 +91,10 @@ ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt (T_ELSE stmt)?;
 unaryExp:
 	primaryExp
 	| T_ID T_L_PAREN realParamList? T_R_PAREN
-	| T_SUB unaryExp;
+	| unaryOp unaryExp;
+
+// 一元运算符
+unaryOp: T_NOT | T_SUB;
 
 // 基本表达式：括号表达式、整数、左值表达式
 primaryExp: T_L_PAREN expr T_R_PAREN | T_DIGIT | lVal;
@@ -114,6 +129,10 @@ T_GE: '>=';
 
 T_EQ: '==';
 T_NE: '!=';
+
+T_AND: '&&';
+T_OR: '||';
+T_NOT: '!';
 
 // 要注意关键字同样也属于T_ID，因此必须放在T_ID的前面，否则会识别成T_ID
 T_RETURN: 'return';

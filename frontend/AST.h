@@ -117,6 +117,15 @@ enum class ast_operator_type : int {
     /// @brief 相等性运算符!=
     AST_OP_NE,
 
+    /// @brief 逻辑运算符&&
+    AST_OP_AND,
+
+    /// @brief 逻辑运算符||
+    AST_OP_OR,
+
+    /// @brief 逻辑运算符!
+    AST_OP_NOT,
+
     /// @brief if语句
     AST_OP_IF,
 

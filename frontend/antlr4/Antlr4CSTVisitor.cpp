@@ -217,9 +217,9 @@ std::any MiniCCSTVisitor::visitExpr(MiniCParser::ExprContext * ctx)
 /// @param ctx
 std::any MiniCCSTVisitor::visitCond(MiniCParser::CondContext * ctx)
 {
-    // 识别产生式：cond: eqExp
+    // 识别产生式：cond: lOrExp
 
-    return visitEqExp(ctx->eqExp());
+    return visitLOrExp(ctx->lOrExp());
 }
 
 /// @brief 内部产生的非终结符assignStatement的分析
@@ -453,6 +453,102 @@ std::any MiniCCSTVisitor::visitEqOp(MiniCParser::EqOpContext * ctx)
 	}
 }
 
+/// @brief 非终结符lAndExp的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitLAndExp(MiniCParser::LAndExpContext * ctx)
+{
+    // 识别的文法产生式：lAndExp: eqExp (lAndOp eqExp)*
+
+    if (ctx->lAndOp().empty()) {
+        // 没有lAndOp运算符，则说明闭包识别为0，只识别了第一个非终结符relExp
+        return visitEqExp(ctx->eqExp()[0]);
+    }
+
+	ast_node *left, *right;
+
+    // 存在lAndOp的情况下，进行自动转化
+    auto opsCtxVec = ctx->lAndOp();
+
+    // 有操作符，必定会进入循环，为right设置正确的值
+    for (int k = 0; k < (int) opsCtxVec.size(); k++) {
+
+        // 获取运算符
+        ast_operator_type op = std::any_cast<ast_operator_type>(visitLAndOp(opsCtxVec[k]));
+
+        if (k == 0) {
+            // 左操作数
+            left = std::any_cast<ast_node *>(visitEqExp(ctx->eqExp()[k]));
+        }
+
+        // 右操作数
+        right = std::any_cast<ast_node *>(visitEqExp(ctx->eqExp()[k + 1]));
+
+        // 新建结点作为下一个运算符的右操作符
+        left = ast_node::New(op, left, right, nullptr);
+    }
+
+    return left;
+}
+
+/// @brief 非终结符lAndOp的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitLAndOp(MiniCParser::LAndOpContext * ctx)
+{
+    if (ctx->T_AND()) {
+        return ast_operator_type::AST_OP_AND;
+    } else {
+        return std::any{nullptr};
+	}
+}
+
+/// @brief 非终结符lOrExp的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitLOrExp(MiniCParser::LOrExpContext * ctx)
+{
+    // 识别的文法产生式：lOrExp: lAndExp (lOrOp lAndExp)*
+
+    if (ctx->lOrOp().empty()) {
+        // 没有lOrOp运算符，则说明闭包识别为0，只识别了第一个非终结符lAndExp
+        return visitLAndExp(ctx->lAndExp()[0]);
+    }
+
+	ast_node *left, *right;
+
+    // 存在lOrOp的情况下，进行自动转化
+    auto opsCtxVec = ctx->lOrOp();
+
+    // 有操作符，必定会进入循环，为right设置正确的值
+    for (int k = 0; k < (int) opsCtxVec.size(); k++) {
+
+        // 获取运算符
+        ast_operator_type op = std::any_cast<ast_operator_type>(visitLOrOp(opsCtxVec[k]));
+
+        if (k == 0) {
+            // 左操作数
+            left = std::any_cast<ast_node *>(visitLAndExp(ctx->lAndExp()[k]));
+        }
+
+        // 右操作数
+        right = std::any_cast<ast_node *>(visitLAndExp(ctx->lAndExp()[k + 1]));
+
+        // 新建结点作为下一个运算符的右操作符
+        left = ast_node::New(op, left, right, nullptr);
+    }
+
+    return left;
+}
+
+/// @brief 非终结符lOrOp的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitLOrOp(MiniCParser::LOrOpContext * ctx)
+{
+    if (ctx->T_OR()) {
+        return ast_operator_type::AST_OP_OR;
+    } else {
+        return std::any{nullptr};
+	}
+}
+
 /// @brief 非终结符ifStmt的分析
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitIfStmt(MiniCParser::IfStmtContext * ctx)
@@ -488,7 +584,7 @@ std::any MiniCCSTVisitor::visitIfStmt(MiniCParser::IfStmtContext * ctx)
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitUnaryExp(MiniCParser::UnaryExpContext * ctx)
 {
-    // 识别文法产生式：unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN | T_SUB unaryExp;
+    // 识别文法产生式：unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN | unaryOp unaryExp;
 
     if (ctx->primaryExp()) {
         // 普通表达式
@@ -509,23 +605,35 @@ std::any MiniCCSTVisitor::visitUnaryExp(MiniCParser::UnaryExpContext * ctx)
 
         // 创建函数调用节点，其孩子为被调用函数名和实参，
         return create_func_call(funcname_node, paramListNode);
-    } else if (ctx->T_SUB()) {
-		// 识别到求负运算
+    } else if (ctx->unaryOp()) {
+		// 识别到求负或逻辑非运算
         auto operandNode = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()));
 
         if (!operandNode) {
             return std::any{nullptr};
         }
 
-        ast_operator_type op = ast_operator_type::AST_OP_SUB;
+        ast_operator_type op = std::any_cast<ast_operator_type>(visitUnaryOp(ctx->unaryOp()));
 
-        ast_node * unaryMinusNode = ast_node::New(op, operandNode, nullptr);
+        ast_node * unaryNode = ast_node::New(op, operandNode, nullptr);
 
-        return unaryMinusNode;
-        
+        return unaryNode;
 	} else {
         return nullptr;
     }
+}
+
+/// @brief 非终结符unaryOp的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitUnaryOp(MiniCParser::UnaryOpContext * ctx)
+{
+    if (ctx->T_NOT()) {
+        return ast_operator_type::AST_OP_NOT;
+	} else if (ctx->T_SUB()) {
+		return ast_operator_type::AST_OP_SUB;
+    } else {
+        return std::any{nullptr};
+	}
 }
 
 /// @brief 非终结符PrimaryExp的分析

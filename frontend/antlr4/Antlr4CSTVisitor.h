@@ -19,6 +19,7 @@
 #include "AST.h"
 #include "MiniCBaseVisitor.h"
 #include "MiniCParser.h"
+#include <any>
 
 /// @brief 遍历具体语法树产生抽象语法树
 class MiniCCSTVisitor : public MiniCBaseVisitor {
@@ -137,37 +138,65 @@ protected:
 	///
 	/// @brief 非终结符mulOp的分析
 	/// @param ctx CST上下文
-	/// @return std::any 类型
+	/// @return std::any AST的节点
 	///
 	std::any visitMulOp(MiniCParser::MulOpContext *ctx) override;
 
 	///
 	/// @brief 非终结符relExp的分析
 	/// @param ctx CST上下文
-	/// @return std::any 类型
+	/// @return std::any AST的节点
 	///
     std::any visitRelExp(MiniCParser::RelExpContext * ctx) override;
 
     ///
 	/// @brief 非终结符relOp的分析
 	/// @param ctx CST上下文
-	/// @return std::any 类型
+	/// @return std::any AST的节点
 	///
     std::any visitRelOp(MiniCParser::RelOpContext * ctx) override;
 
 	///
 	/// @brief 非终结符eqExp的分析
 	/// @param ctx CST上下文
-	/// @return std::any 类型
+	/// @return std::any AST的节点
 	///
     std::any visitEqExp(MiniCParser::EqExpContext * ctx) override;
 
     ///
 	/// @brief 非终结符eqOp的分析
 	/// @param ctx CST上下文
-	/// @return std::any 类型
+	/// @return std::any AST的节点
 	///
-	std::any visitEqOp(MiniCParser::EqOpContext * ctx) override;
+    std::any visitEqOp(MiniCParser::EqOpContext * ctx) override;
+
+    ///
+    /// @brief 非终结符lAndExp的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+	std::any visitLAndExp(MiniCParser::LAndExpContext * ctx) override;
+
+    ///
+    /// @brief 非终结符lAndOp的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+    std::any visitLAndOp(MiniCParser::LAndOpContext * ctx) override;
+
+    ///
+    /// @brief 非终结符lOrExp的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+    std::any visitLOrExp(MiniCParser::LOrExpContext * ctx) override;
+
+    ///
+    /// @brief 非终结符lOrOp的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+	std::any visitLOrOp(MiniCParser::LOrOpContext * ctx) override;
 
     ///
     /// @brief 非终结符ifStmt的分析
@@ -182,6 +211,13 @@ protected:
     /// @return std::any AST的节点
     ///
     std::any visitUnaryExp(MiniCParser::UnaryExpContext * ctx) override;
+
+	///
+	/// @brief 非终结符unaryOp的分析
+	/// @param ctx CST上下文
+	/// @return std::any AST的节点
+	///
+	std::any visitUnaryOp(MiniCParser::UnaryOpContext *ctx) override;
 
     ///
     /// @brief 非终结符PrimaryExp的分析
