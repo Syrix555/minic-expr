@@ -21,6 +21,7 @@
 #include <iostream>
 
 #include "AST.h"
+#include "BranchInstruction.h"
 #include "Common.h"
 #include "ConstInt.h"
 #include "Function.h"
@@ -663,18 +664,19 @@ bool IRGenerator::ir_cmp_lt(ast_node * node)
         return false;
     }
 
-    BinaryInstruction * addInst = new BinaryInstruction(module->getCurrentFunction(),
+    BinaryInstruction * ltInst = new BinaryInstruction(module->getCurrentFunction(),
                                                         IRInstOperator::IRINST_OP_LT_I,
                                                         left->val,
                                                         right->val,
-                                                        IntegerType::getTypeInt());
+                                                        IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(right->blockInsts);
-    node->blockInsts.addInst(addInst);
+    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
+    node->parent->blockInsts.addInst(left->blockInsts);
+    node->parent->blockInsts.addInst(right->blockInsts);
+    node->parent->blockInsts.addInst(ltInst);
 
-    node->val = addInst;
+    node->val = ltInst;
 
     return true;
 }
@@ -703,18 +705,19 @@ bool IRGenerator::ir_cmp_gt(ast_node * node)
         return false;
     }
 
-    BinaryInstruction * addInst = new BinaryInstruction(module->getCurrentFunction(),
+    BinaryInstruction * gtInst = new BinaryInstruction(module->getCurrentFunction(),
                                                         IRInstOperator::IRINST_OP_GT_I,
                                                         left->val,
                                                         right->val,
-                                                        IntegerType::getTypeInt());
+                                                        IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(right->blockInsts);
-    node->blockInsts.addInst(addInst);
+    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
+    node->parent->blockInsts.addInst(left->blockInsts);
+    node->parent->blockInsts.addInst(right->blockInsts);
+    node->parent->blockInsts.addInst(gtInst);
 
-    node->val = addInst;
+    node->val = gtInst;
 
     return true;
 }
@@ -743,18 +746,19 @@ bool IRGenerator::ir_cmp_le(ast_node * node)
         return false;
     }
 
-    BinaryInstruction * addInst = new BinaryInstruction(module->getCurrentFunction(),
+    BinaryInstruction * leInst = new BinaryInstruction(module->getCurrentFunction(),
                                                         IRInstOperator::IRINST_OP_LE_I,
                                                         left->val,
                                                         right->val,
-                                                        IntegerType::getTypeInt());
+                                                        IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(right->blockInsts);
-    node->blockInsts.addInst(addInst);
+    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
+    node->parent->blockInsts.addInst(left->blockInsts);
+    node->parent->blockInsts.addInst(right->blockInsts);
+    node->parent->blockInsts.addInst(leInst);
 
-    node->val = addInst;
+    node->val = leInst;
 
     return true;
 }
@@ -783,18 +787,19 @@ bool IRGenerator::ir_cmp_ge(ast_node * node)
         return false;
     }
 
-    BinaryInstruction * addInst = new BinaryInstruction(module->getCurrentFunction(),
+    BinaryInstruction * geInst = new BinaryInstruction(module->getCurrentFunction(),
                                                         IRInstOperator::IRINST_OP_GE_I,
                                                         left->val,
                                                         right->val,
-                                                        IntegerType::getTypeInt());
+                                                        IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(right->blockInsts);
-    node->blockInsts.addInst(addInst);
+    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
+    node->parent->blockInsts.addInst(left->blockInsts);
+    node->parent->blockInsts.addInst(right->blockInsts);
+    node->parent->blockInsts.addInst(geInst);
 
-    node->val = addInst;
+    node->val = geInst;
 
     return true;
 }
@@ -823,18 +828,19 @@ bool IRGenerator::ir_cmp_eq(ast_node * node)
         return false;
     }
 
-    BinaryInstruction * addInst = new BinaryInstruction(module->getCurrentFunction(),
+    BinaryInstruction * eqInst = new BinaryInstruction(module->getCurrentFunction(),
                                                         IRInstOperator::IRINST_OP_EQ_I,
                                                         left->val,
                                                         right->val,
-                                                        IntegerType::getTypeInt());
+                                                        IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(right->blockInsts);
-    node->blockInsts.addInst(addInst);
+    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
+    node->parent->blockInsts.addInst(left->blockInsts);
+    node->parent->blockInsts.addInst(right->blockInsts);
+    node->parent->blockInsts.addInst(eqInst);
 
-    node->val = addInst;
+    node->val = eqInst;
 
     return true;
 }
@@ -863,18 +869,19 @@ bool IRGenerator::ir_cmp_ne(ast_node * node)
         return false;
     }
 
-    BinaryInstruction * addInst = new BinaryInstruction(module->getCurrentFunction(),
+    BinaryInstruction * neInst = new BinaryInstruction(module->getCurrentFunction(),
                                                         IRInstOperator::IRINST_OP_NE_I,
                                                         left->val,
                                                         right->val,
-                                                        IntegerType::getTypeInt());
+                                                        IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(right->blockInsts);
-    node->blockInsts.addInst(addInst);
+    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
+    node->parent->blockInsts.addInst(left->blockInsts);
+    node->parent->blockInsts.addInst(right->blockInsts);
+    node->parent->blockInsts.addInst(neInst);
 
-    node->val = addInst;
+    node->val = neInst;
 
     return true;
 }
@@ -884,6 +891,7 @@ bool IRGenerator::ir_cmp_ne(ast_node * node)
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_if(ast_node * node)
 {
+    ast_node * cond_node = node->sons[0];
     ast_node * true_node = node->sons[1];
 
     // 获取当前作用域使用的函数
@@ -895,10 +903,46 @@ bool IRGenerator::ir_if(ast_node * node)
     LabelInstruction * ifExitLabel = new LabelInstruction(currentFunc);
 
     // 获取cond节点，并生成线性IR
-    ast_node * cond_node = node->sons[0];
-    ir_visit_ast_node(cond_node);
-    // TODO 条件跳转语句相关实现
-    
+    ast_node * cond_res = ir_visit_ast_node(cond_node);
+    if (!cond_res) {
+        // 条件中某个变量无定值
+        return false;
+	}
+
+    // 利用上一步得到的临时变量寄存器生成条件跳转指令
+    BranchInstruction * ifBranch = new BranchInstruction(currentFunc,
+                                                         cond_res->val,
+                                                         trueLabel,
+                                                         falseLabel);
+    // 将跳转指令添加入指令块
+    node->blockInsts.addInst(ifBranch);
+
+    // 接下来开始处理条件为真的语句块
+    node->blockInsts.addInst(trueLabel);
+    ir_visit_ast_node(true_node);
+
+    // 接下来根据是否有falseBlock进行不同的操作
+    if (node->sons.size() >= 2) {
+        ast_node * false_node = node->sons[2];
+
+		// 存在falseBlock,需要插入无条件跳转出口命令
+        GotoInstruction * ifExit = new GotoInstruction(currentFunc, ifExitLabel);
+        node->blockInsts.addInst(ifExit);
+
+        // 接下来执行else语句块
+        node->blockInsts.addInst(falseLabel);
+        ir_visit_ast_node(false_node);
+
+    } else if (node->sons.size() == 2) {
+        
+        // 不存在else语句块,证明为空,也不需要无条件跳转
+        node->blockInsts.addInst(falseLabel);
+    }
+
+    // 最后插入出口标签,回到原函数流程
+	node->blockInsts.addInst(ifExitLabel);
+
+    return true;
 }
 
 /// @brief 赋值AST节点翻译成线性中间IR

@@ -170,6 +170,8 @@ set(IR_SRCS
 	ir/Instructions/FuncCallInstruction.h
 	ir/Instructions/GotoInstruction.cpp
 	ir/Instructions/GotoInstruction.h
+	ir/Instructions/BranchInstruction.h
+	ir/Instructions/BranchInstruction.cpp
 	ir/Instructions/LabelInstruction.cpp
 	ir/Instructions/LabelInstruction.h
 	ir/Instructions/MoveInstruction.cpp
