@@ -671,10 +671,9 @@ bool IRGenerator::ir_cmp_lt(ast_node * node)
                                                         IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
-    node->parent->blockInsts.addInst(left->blockInsts);
-    node->parent->blockInsts.addInst(right->blockInsts);
-    node->parent->blockInsts.addInst(ltInst);
+    node->blockInsts.addInst(left->blockInsts);
+    node->blockInsts.addInst(right->blockInsts);
+    node->blockInsts.addInst(ltInst);
 
     node->val = ltInst;
 
@@ -712,10 +711,9 @@ bool IRGenerator::ir_cmp_gt(ast_node * node)
                                                         IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
-    node->parent->blockInsts.addInst(left->blockInsts);
-    node->parent->blockInsts.addInst(right->blockInsts);
-    node->parent->blockInsts.addInst(gtInst);
+    node->blockInsts.addInst(left->blockInsts);
+    node->blockInsts.addInst(right->blockInsts);
+    node->blockInsts.addInst(gtInst);
 
     node->val = gtInst;
 
@@ -753,10 +751,9 @@ bool IRGenerator::ir_cmp_le(ast_node * node)
                                                         IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
-    node->parent->blockInsts.addInst(left->blockInsts);
-    node->parent->blockInsts.addInst(right->blockInsts);
-    node->parent->blockInsts.addInst(leInst);
+    node->blockInsts.addInst(left->blockInsts);
+    node->blockInsts.addInst(right->blockInsts);
+    node->blockInsts.addInst(leInst);
 
     node->val = leInst;
 
@@ -794,10 +791,9 @@ bool IRGenerator::ir_cmp_ge(ast_node * node)
                                                         IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
-    node->parent->blockInsts.addInst(left->blockInsts);
-    node->parent->blockInsts.addInst(right->blockInsts);
-    node->parent->blockInsts.addInst(geInst);
+    node->blockInsts.addInst(left->blockInsts);
+    node->blockInsts.addInst(right->blockInsts);
+    node->blockInsts.addInst(geInst);
 
     node->val = geInst;
 
@@ -835,10 +831,9 @@ bool IRGenerator::ir_cmp_eq(ast_node * node)
                                                         IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
-    node->parent->blockInsts.addInst(left->blockInsts);
-    node->parent->blockInsts.addInst(right->blockInsts);
-    node->parent->blockInsts.addInst(eqInst);
+    node->blockInsts.addInst(left->blockInsts);
+    node->blockInsts.addInst(right->blockInsts);
+    node->blockInsts.addInst(eqInst);
 
     node->val = eqInst;
 
@@ -876,10 +871,9 @@ bool IRGenerator::ir_cmp_ne(ast_node * node)
                                                         IntegerType::getTypeBool());
 
     // 创建临时变量保存IR的值，以及线性IR指令
-    // !注意：这里不能将指令保存到ast的关系运算节点，而需要保存到对应的分支选择节点内，否则无法遍历到关系运算指令
-    node->parent->blockInsts.addInst(left->blockInsts);
-    node->parent->blockInsts.addInst(right->blockInsts);
-    node->parent->blockInsts.addInst(neInst);
+    node->blockInsts.addInst(left->blockInsts);
+    node->blockInsts.addInst(right->blockInsts);
+    node->blockInsts.addInst(neInst);
 
     node->val = neInst;
 
@@ -909,6 +903,9 @@ bool IRGenerator::ir_if(ast_node * node)
         return false;
 	}
 
+    //! 注意：这里不能仅仅将指令保存到cond_res节点，而需要保存到分支选择节点内，否则无法遍历到关系运算指令
+	node->blockInsts.addInst(cond_res->blockInsts);
+
     // 利用上一步得到的临时变量寄存器生成条件跳转指令
     BranchInstruction * ifBranch = new BranchInstruction(currentFunc,
                                                          cond_res->val,
@@ -919,10 +916,13 @@ bool IRGenerator::ir_if(ast_node * node)
 
     // 接下来开始处理条件为真的语句块
     node->blockInsts.addInst(trueLabel);
-    ir_visit_ast_node(true_node);
+    
+    //! 注意：这里同样需要把true_res内的指令添加到本节点的指令块中，否则无法输出
+    ast_node * true_res = ir_visit_ast_node(true_node);
+    node->blockInsts.addInst(true_res->blockInsts);
 
     // 接下来根据是否有falseBlock进行不同的操作
-    if (node->sons.size() >= 2) {
+    if (node->sons.size() > 2) {
         ast_node * false_node = node->sons[2];
 
 		// 存在falseBlock,需要插入无条件跳转出口命令
@@ -931,7 +931,10 @@ bool IRGenerator::ir_if(ast_node * node)
 
         // 接下来执行else语句块
         node->blockInsts.addInst(falseLabel);
-        ir_visit_ast_node(false_node);
+
+        //! 注意：这里同样需要把false_res内的指令添加到本节点的指令块中，否则无法输出
+        ast_node * false_res = ir_visit_ast_node(false_node);
+		node->blockInsts.addInst(false_res->blockInsts);
 
     } else if (node->sons.size() == 2) {
         
