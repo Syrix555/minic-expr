@@ -16,6 +16,7 @@
 ///
 #include <cstdint>
 #include <cstdio>
+#include <sys/types.h>
 #include <unordered_map>
 #include <vector>
 #include <iostream>
@@ -38,6 +39,7 @@
 #include "BinaryInstruction.h"
 #include "MoveInstruction.h"
 #include "GotoInstruction.h"
+#include "Value.h"
 
 /// @brief 构造函数
 /// @param _root AST的根
@@ -63,6 +65,11 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_GE] = &IRGenerator::ir_cmp_ge;
     ast2ir_handlers[ast_operator_type::AST_OP_EQ] = &IRGenerator::ir_cmp_eq;
     ast2ir_handlers[ast_operator_type::AST_OP_NE] = &IRGenerator::ir_cmp_ne;
+
+    /* 逻辑表达式运算 */
+    ast2ir_handlers[ast_operator_type::AST_OP_AND] = &IRGenerator::ir_and;
+    ast2ir_handlers[ast_operator_type::AST_OP_OR] = &IRGenerator::ir_or;
+    ast2ir_handlers[ast_operator_type::AST_OP_NOT] = &IRGenerator::ir_not;
 
     /* 语句 */
     ast2ir_handlers[ast_operator_type::AST_OP_ASSIGN] = &IRGenerator::ir_assign;
@@ -648,7 +655,7 @@ bool IRGenerator::ir_cmp_lt(ast_node * node)
     ast_node * src1_node = node->sons[0];
     ast_node * src2_node = node->sons[1];
 
-    // 关系运算同样是左结合的
+    // 关系运算同样是左结合的，且没必要继续传标签
 
     // 左边操作数
     ast_node * left = ir_visit_ast_node(src1_node);
@@ -677,6 +684,15 @@ bool IRGenerator::ir_cmp_lt(ast_node * node)
 
     node->val = ltInst;
 
+    // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+        BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
+                                                             ltInst,
+                                                             node->trueLabel,
+                                                             node->falseLabel);
+		node->blockInsts.addInst(ifBranch);
+	}
+
     return true;
 }
 
@@ -688,7 +704,7 @@ bool IRGenerator::ir_cmp_gt(ast_node * node)
 	ast_node * src1_node = node->sons[0];
     ast_node * src2_node = node->sons[1];
 
-    // 关系运算同样是左结合的
+    // 关系运算同样是左结合的，且没必要继续传标签
 
     // 左边操作数
     ast_node * left = ir_visit_ast_node(src1_node);
@@ -717,6 +733,15 @@ bool IRGenerator::ir_cmp_gt(ast_node * node)
 
     node->val = gtInst;
 
+    // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+        BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
+                                                             node->val,
+                                                             node->trueLabel,
+                                                             node->falseLabel);
+		node->blockInsts.addInst(ifBranch);
+	}
+
     return true;
 }
 
@@ -728,7 +753,7 @@ bool IRGenerator::ir_cmp_le(ast_node * node)
 	ast_node * src1_node = node->sons[0];
     ast_node * src2_node = node->sons[1];
 
-    // 关系运算同样是左结合的
+    // 关系运算同样是左结合的，且没必要继续传标签
 
     // 左边操作数
     ast_node * left = ir_visit_ast_node(src1_node);
@@ -757,6 +782,15 @@ bool IRGenerator::ir_cmp_le(ast_node * node)
 
     node->val = leInst;
 
+    // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+        BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
+                                                             node->val,
+                                                             node->trueLabel,
+                                                             node->falseLabel);
+		node->blockInsts.addInst(ifBranch);
+	}
+
     return true;
 }
 
@@ -768,7 +802,7 @@ bool IRGenerator::ir_cmp_ge(ast_node * node)
 	ast_node * src1_node = node->sons[0];
     ast_node * src2_node = node->sons[1];
 
-    // 关系运算同样是左结合的
+    // 关系运算同样是左结合的，且没必要继续传标签
 
     // 左边操作数
     ast_node * left = ir_visit_ast_node(src1_node);
@@ -797,6 +831,15 @@ bool IRGenerator::ir_cmp_ge(ast_node * node)
 
     node->val = geInst;
 
+    // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+        BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
+                                                             node->val,
+                                                             node->trueLabel,
+                                                             node->falseLabel);
+		node->blockInsts.addInst(ifBranch);
+	}
+
     return true;
 }
 
@@ -808,7 +851,7 @@ bool IRGenerator::ir_cmp_eq(ast_node * node)
 	ast_node * src1_node = node->sons[0];
     ast_node * src2_node = node->sons[1];
 
-    // 相等性运算同样是左结合的
+    // 相等性运算同样是左结合的，且没必要继续传标签
 
     // 左边操作数
     ast_node * left = ir_visit_ast_node(src1_node);
@@ -837,6 +880,15 @@ bool IRGenerator::ir_cmp_eq(ast_node * node)
 
     node->val = eqInst;
 
+    // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+        BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
+                                                             node->val,
+                                                             node->trueLabel,
+                                                             node->falseLabel);
+		node->blockInsts.addInst(ifBranch);
+	}
+
     return true;
 }
 
@@ -848,7 +900,7 @@ bool IRGenerator::ir_cmp_ne(ast_node * node)
 	ast_node * src1_node = node->sons[0];
     ast_node * src2_node = node->sons[1];
 
-    // 相等性运算同样是左结合的
+    // 相等性运算同样是左结合的，且没必要继续传标签
 
     // 左边操作数
     ast_node * left = ir_visit_ast_node(src1_node);
@@ -877,8 +929,258 @@ bool IRGenerator::ir_cmp_ne(ast_node * node)
 
     node->val = neInst;
 
+    // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+        BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
+                                                             node->val,
+                                                             node->trueLabel,
+                                                             node->falseLabel);
+		node->blockInsts.addInst(ifBranch);
+	}
+
     return true;
 }
+
+/// @brief 逻辑运算&&AST节点翻译成线性中间IR
+/// @param node AST节点
+/// @return true 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_and(ast_node * node)
+{
+	ast_node * src1_node = node->sons[0];
+    ast_node * src2_node = node->sons[1];
+
+    // 获取当前作用域使用的函数
+    Function * currentFunc = module->getCurrentFunction();
+    
+    LabelInstruction * truePass = new LabelInstruction(currentFunc);
+    // 继承父节点的所有标签
+    src1_node->inherit_label(node);
+    src1_node->falseLabel = truePass;
+    src2_node->inherit_label(node);
+
+    // 在这里创建真传递出口，真假出口使用父节点条件分支结构的标签
+    LabelInstruction * trueLabel = node->trueLabel;
+    LabelInstruction * falseLabel = node->falseLabel;
+
+    // 开始遍历两个子节点
+    ast_node * left = ir_visit_ast_node(src1_node);
+    if (!left) {
+        // 某个变量无定值
+        return false;
+    }
+
+    node->blockInsts.addInst(left->blockInsts);
+
+    ConstInt * zero = module->newConstInt(0);
+
+    // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
+    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+        BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
+                                                             IRInstOperator::IRINST_OP_NE_I,
+                                                             left->val,
+                                                             zero,
+                                                             IntegerType::getTypeBool());
+        node->blockInsts.addInst(src1_cmp);
+    }
+
+    // 基于结果进行真传递出口与假出口的传递
+	if (left->node_type != ast_operator_type::AST_OP_AND
+        && left->node_type != ast_operator_type::AST_OP_OR){
+			BranchInstruction * src1_jmp = new BranchInstruction(currentFunc,
+															   left->val,
+															  truePass,
+															  falseLabel);
+			node->blockInsts.addInst(src1_jmp);
+		}
+
+    // 将真传递出口指令加入指令块中
+    node->blockInsts.addInst(truePass);
+
+    ast_node * right = ir_visit_ast_node(src2_node);
+    if (!right) {
+        // 某个变量无定值
+        return false;
+    }
+
+    node->blockInsts.addInst(right->blockInsts);
+
+    // 处理右节点时假标签需要单独处理，如果后续子节点不再有and/or，这里假结点将直接跳出if语句，执行结束
+    //! 父节点有or时，还可以继续判断，不应该跳出
+    // if (src1_node->node_type != ast_operator_type::AST_OP_AND &&
+    //     src1_node->node_type != ast_operator_type::AST_OP_OR &&
+	// 	src2_node->node_type != ast_operator_type::AST_OP_AND &&
+	// 	src2_node->node_type != ast_operator_type::AST_OP_OR &&
+	// 	node->parent->node_type != ast_operator_type::AST_OP_IF &&
+	// 	node->parent->node_type != ast_operator_type::AST_OP_OR &&
+	// 	(node->parent->node_type == ast_operator_type::AST_OP_OR || node == node->parent->sons[1])) {
+	// 		falseLabel = node->endLabel;
+    // }
+    
+    // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
+    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+        BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
+                                                             IRInstOperator::IRINST_OP_NE_I,
+                                                             right->val,
+                                                             zero,
+                                                             IntegerType::getTypeBool());
+        node->blockInsts.addInst(src1_cmp);
+	}
+
+    // 基于结果进行真出口与假出口的传递
+	if (right->node_type != ast_operator_type::AST_OP_AND
+        && right->node_type != ast_operator_type::AST_OP_OR){
+			BranchInstruction * src2_jmp = new BranchInstruction(currentFunc,
+															   right->val,
+															  trueLabel,
+															  falseLabel);
+			node->blockInsts.addInst(src2_jmp);
+		}
+
+    return true;
+}
+
+
+/// @brief 逻辑运算||AST节点翻译成线性中间IR
+/// @param node AST节点
+/// @return true 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_or(ast_node * node)
+{
+	ast_node * src1_node = node->sons[0];
+    ast_node * src2_node = node->sons[1];
+
+    // 获取当前作用域使用的函数
+    Function * currentFunc = module->getCurrentFunction();
+
+	LabelInstruction * falsePass = new LabelInstruction(currentFunc);
+    // 继承父节点的所有标签
+    src1_node->inherit_label(node);
+    src1_node->falseLabel = falsePass;
+    src2_node->inherit_label(node);
+
+    // 在这里创建假传递出口，真假出口使用父节点条件分支结构的标签
+	LabelInstruction * trueLabel = node->trueLabel;
+    LabelInstruction * falseLabel = node->falseLabel;
+
+    // 重新设置本节点保存的标签，使后面的子节点遍历能够顺利使用
+    node->set_label(trueLabel, falsePass, node->endLabel);
+
+    // 开始遍历两个子节点
+    ast_node * left = ir_visit_ast_node(src1_node);
+    if (!left) {
+        // 某个变量无定值
+        return false;
+    }
+
+    node->blockInsts.addInst(left->blockInsts);
+
+    ConstInt * zero = module->newConstInt(0);
+
+    // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
+    // TODO 同样不完善，需要修改
+    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+        BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
+                                                             IRInstOperator::IRINST_OP_NE_I,
+                                                             left->val,
+                                                             zero,
+                                                             IntegerType::getTypeBool());
+        node->blockInsts.addInst(src1_cmp);
+    }
+
+    // 基于结果进行真出口与假传递出口的传递
+	if (left->node_type != ast_operator_type::AST_OP_AND
+        && left->node_type != ast_operator_type::AST_OP_OR){
+			BranchInstruction * src1_jmp = new BranchInstruction(currentFunc,
+															   left->val,
+															  trueLabel,
+															  falsePass);
+			node->blockInsts.addInst(src1_jmp);
+		}
+
+    // 将假传递出口指令加入指令块中
+    node->blockInsts.addInst(falsePass);
+
+    ast_node * right = ir_visit_ast_node(src2_node);
+    if (!right) {
+        // 某个变量无定值
+        return false;
+    }
+
+    node->blockInsts.addInst(right->blockInsts);
+
+    // 处理右节点时假标签需要单独处理，如果后续子节点不再有and/or，这里假结点将直接跳出if语句，执行结束
+    //! 父节点有or时，还可以继续判断，不应该跳出，但如果是
+    // if (src1_node->node_type != ast_operator_type::AST_OP_AND &&
+    //     src1_node->node_type != ast_operator_type::AST_OP_OR &&
+	// 	src2_node->node_type != ast_operator_type::AST_OP_AND &&
+	// 	src2_node->node_type != ast_operator_type::AST_OP_OR &&
+	// 	node->parent->node_type != ast_operator_type::AST_OP_IF &&
+	// 	node->parent->node_type != ast_operator_type::AST_OP_OR &&
+	// 	(node->parent->node_type == ast_operator_type::AST_OP_OR || node == node->parent->sons[1])){
+	// 		falseLabel = node->endLabel;
+    // }
+
+    // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
+    // TODO 同样不完善，需要修改
+    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+        BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
+                                                             IRInstOperator::IRINST_OP_NE_I,
+                                                             right->val,
+                                                             zero,
+                                                             IntegerType::getTypeBool());
+        node->blockInsts.addInst(src1_cmp);
+	}
+
+    // 基于结果进行真出口与假出口的传递（如果对应的是and/or运算就无需创建）
+    if (right->node_type != ast_operator_type::AST_OP_AND
+        && right->node_type != ast_operator_type::AST_OP_OR){
+			BranchInstruction * src2_jmp = new BranchInstruction(currentFunc,
+															   right->val,
+															  trueLabel,
+															  falseLabel);
+			node->blockInsts.addInst(src2_jmp);
+		}
+
+
+    return true;
+}
+
+/// @brief 逻辑运算!AST节点翻译成线性中间IR
+/// @param node AST节点
+/// @return true 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_not(ast_node * node)
+{
+    ast_node * src_node = node->sons[0];
+	ConstInt * zero = module->newConstInt(0);
+
+    src_node->inherit_label(node);
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF ||
+        node->parent->node_type == ast_operator_type::AST_OP_AND ||
+        node->parent->node_type == ast_operator_type::AST_OP_OR) {
+        src_node->swap_true_false();
+    }
+
+    ast_node * src_res = ir_visit_ast_node(src_node);
+    if (!src_res) {
+        return false;
+    }
+
+    node->inherit_label(src_node);
+    node->blockInsts.addInst(src_res->blockInsts);
+    node->val = src_res->val;
+
+    // TODO 处理条件仅存在单变量取反的情况(if语句中同理)，这里不够完善
+    if (src_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+		BinaryInstruction * eqInst = new BinaryInstruction(module->getCurrentFunction(),
+														   IRInstOperator::IRINST_OP_EQ_I,
+														   src_res->val,
+														   zero,
+														   IntegerType::getTypeBool());
+        node->blockInsts.addInst(eqInst);
+        node->val = eqInst;						// 这里必须将node节点值置为eq指令的目标操作数
+	}
+    return true;
+}
+
 
 /// @brief if语句块翻译成线性中间IR
 /// @param node AST节点
@@ -890,11 +1192,15 @@ bool IRGenerator::ir_if(ast_node * node)
 
     // 获取当前作用域使用的函数
     Function * currentFunc = module->getCurrentFunction();
-    
+	ConstInt * zero = module->newConstInt(0);
+
     // 先分别创建三个Label：真入口、假入口、分支出口
     LabelInstruction * trueLabel = new LabelInstruction(currentFunc);
     LabelInstruction * falseLabel = new LabelInstruction(currentFunc);
     LabelInstruction * ifExitLabel = new LabelInstruction(currentFunc);
+
+    //! 将创建的真假出口保存到节点中，以便条件表达式计算时使用这些出口
+    cond_node->set_label(trueLabel, falseLabel, ifExitLabel);
 
     // 获取cond节点，并生成线性IR
     ast_node * cond_res = ir_visit_ast_node(cond_node);
@@ -906,13 +1212,29 @@ bool IRGenerator::ir_if(ast_node * node)
     //! 注意：这里不能仅仅将指令保存到cond_res节点，而需要保存到分支选择节点内，否则无法遍历到关系运算指令
 	node->blockInsts.addInst(cond_res->blockInsts);
 
-    // 利用上一步得到的临时变量寄存器生成条件跳转指令
-    BranchInstruction * ifBranch = new BranchInstruction(currentFunc,
-                                                         cond_res->val,
-                                                         trueLabel,
-                                                         falseLabel);
-    // 将跳转指令添加入指令块
-    node->blockInsts.addInst(ifBranch);
+    //! 只能当仅有单变量时创建跳转指令，避免与逻辑运算发生冲突
+    if (cond_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
+        cond_node->node_type == ast_operator_type::AST_OP_SUB ||
+        cond_node->node_type == ast_operator_type::AST_OP_NOT) {
+		Value * cond_val;
+        if (cond_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
+            cond_node->node_type == ast_operator_type::AST_OP_SUB) {
+            BinaryInstruction * neInst = new BinaryInstruction(currentFunc,
+                                                               IRInstOperator::IRINST_OP_NE_I,
+                                                               cond_res->val,
+                                                               zero,
+                                                               IntegerType::getTypeBool());
+            node->blockInsts.addInst(neInst);
+            cond_val = neInst;
+        } else {
+            cond_val = cond_res->val;
+		}
+        BranchInstruction * ifBranch = new BranchInstruction(currentFunc,
+														     cond_val,
+														     trueLabel,
+														     falseLabel);
+		node->blockInsts.addInst(ifBranch);
+	}
 
     // 接下来开始处理条件为真的语句块
     node->blockInsts.addInst(trueLabel);

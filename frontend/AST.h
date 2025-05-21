@@ -25,6 +25,7 @@
 #include "IRCode.h"
 #include "Value.h"
 #include "VoidType.h"
+#include "LabelInstruction.h"
 
 ///
 /// @brief AST节点的类型。C++专门因为枚举类来区分C语言的结构体
@@ -168,6 +169,15 @@ public:
     /// @brief 线性IR指令或者运行产生的Value，用于线性IR指令产生用
     Value * val = nullptr;
 
+    /// @brief 真出口标签，用于继承上个节点生成的标签
+    LabelInstruction * trueLabel;
+
+    /// @brief 假出口标签，用于继承上个节点生成的标签
+    LabelInstruction * falseLabel;
+
+    /// @brief 结束出口标签，用于继承上个节点生成的标签
+    LabelInstruction * endLabel;
+
     ///
     /// @brief 在进入block等节点时是否要进行作用域管理。默认要做。
     ///
@@ -193,6 +203,15 @@ public:
     /// @param _id 标识符ID
     /// @param _line_no 行号
     ast_node(std::string id, int64_t _line_no);
+
+    /// @brief 设置本节点的所有Label
+    void set_label(LabelInstruction * trueLabel, LabelInstruction * falseLabel, LabelInstruction * endLabel);
+
+    /// @brief 继承该节点的所有标签
+    void inherit_label(ast_node * node);
+
+    /// @brief 交换真假标签
+    void swap_true_false();
 
     /// @brief 判断是否是叶子节点
     /// @param type 节点类型

@@ -16,7 +16,8 @@ public:
     T_ASSIGN = 6, T_COMMA = 7, T_ADD = 8, T_SUB = 9, T_MUL = 10, T_DIV = 11, 
     T_MOD = 12, T_LT = 13, T_GT = 14, T_LE = 15, T_GE = 16, T_EQ = 17, T_NE = 18, 
     T_AND = 19, T_OR = 20, T_NOT = 21, T_RETURN = 22, T_INT = 23, T_VOID = 24, 
-    T_IF = 25, T_ELSE = 26, T_ID = 27, T_DIGIT = 28, WS = 29
+    T_IF = 25, T_ELSE = 26, T_ID = 27, T_DIGIT = 28, WS = 29, LINE_COMMENT = 30, 
+    BLOCK_COMMENT = 31
   };
 
   enum {

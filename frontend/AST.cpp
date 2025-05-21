@@ -63,6 +63,28 @@ ast_node::ast_node(std::string _id, int64_t _line_no)
     name = _id;
 }
 
+/// @brief 设置本节点的所有Label
+void ast_node::set_label(LabelInstruction * trueLabel, LabelInstruction * falseLabel, LabelInstruction * endLabel)
+{
+    this->trueLabel = trueLabel;
+    this->falseLabel = falseLabel;
+    this->endLabel = endLabel;
+}
+
+/// @brief 继承该节点的所有标签
+void ast_node::inherit_label(ast_node * node)
+{
+    this->set_label(node->trueLabel, node->falseLabel, node->endLabel);
+}
+
+/// @brief 交换真假标签
+void ast_node::swap_true_false()
+{
+    auto label = this->trueLabel;
+    this->trueLabel = this->falseLabel;
+    this->falseLabel = label;
+}
+
 /// @brief 判断是否是叶子节点
 /// @return true：是叶子节点 false：内部节点
 bool ast_node::isLeafNode()

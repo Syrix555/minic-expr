@@ -149,3 +149,9 @@ T_DIGIT: '0' [xX] [0-9a-fA-F]+ |
 
 /* 空白符丢弃 */
 WS: [ \r\n\t]+ -> skip;
+
+// 丢弃注释
+LINE_COMMENT: '//' ~[\r\n]* -> channel(HIDDEN);
+
+// 多行注释
+BLOCK_COMMENT: '/*' .*? '*/' -> channel(HIDDEN);

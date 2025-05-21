@@ -81,6 +81,15 @@ enum class IRInstOperator : std::int8_t {
     /// @brief 相等性运算符!=，二元运算
     IRINST_OP_NE_I,
 
+    /// @brief 逻辑运算符&&，二元运算
+    IRINST_OP_AND_I,
+
+    /// @brief 逻辑运算符||，二元运算
+    IRINST_OP_OR_I,
+
+    /// @brief 逻辑运算符!，一元运算
+    IRINST_OP_NOT_I,
+
     /// @brief 分支跳转指令
     IRINST_OP_BRANCH,
 
