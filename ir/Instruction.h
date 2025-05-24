@@ -81,15 +81,6 @@ enum class IRInstOperator : std::int8_t {
     /// @brief 相等性运算符!=，二元运算
     IRINST_OP_NE_I,
 
-    /// @brief 逻辑运算符&&，二元运算
-    IRINST_OP_AND_I,
-
-    /// @brief 逻辑运算符||，二元运算
-    IRINST_OP_OR_I,
-
-    /// @brief 逻辑运算符!，一元运算
-    IRINST_OP_NOT_I,
-
     /// @brief 分支跳转指令
     IRINST_OP_BRANCH,
 
@@ -140,6 +131,12 @@ public:
     /// @return false
     ///
     bool hasResultValue();
+
+    ///
+    /// @brief 检查指令的结果是否被使用过
+    /// @return bool值
+    ///
+    bool isUsed();
 
     ///
     /// @brief 获得分配的寄存器编号或ID

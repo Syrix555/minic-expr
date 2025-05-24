@@ -13,8 +13,10 @@
 /// <tr><td>2024-11-21 <td>1.0     <td>zenglj  <td>新做
 /// </table>
 ///
+#include <cstdint>
 #include <cstdio>
 
+#include "BranchInstruction.h"
 #include "Common.h"
 #include "ILocArm32.h"
 #include "InstSelectorArm32.h"
@@ -54,6 +56,15 @@ InstSelectorArm32::InstSelectorArm32(vector<Instruction *> & _irCode,
     translator_handlers[IRInstOperator::IRINST_OP_MUL_I] = &InstSelectorArm32::translate_mul_int32;
     translator_handlers[IRInstOperator::IRINST_OP_DIV_I] = &InstSelectorArm32::translate_div_int32;
     translator_handlers[IRInstOperator::IRINST_OP_MOD_I] = &InstSelectorArm32::translate_mod_int32;
+
+    translator_handlers[IRInstOperator::IRINST_OP_GT_I] = &InstSelectorArm32::translate_gt_int32;
+    translator_handlers[IRInstOperator::IRINST_OP_LT_I] = &InstSelectorArm32::translate_lt_int32;
+    translator_handlers[IRInstOperator::IRINST_OP_GE_I] = &InstSelectorArm32::translate_ge_int32;
+    translator_handlers[IRInstOperator::IRINST_OP_LE_I] = &InstSelectorArm32::translate_le_int32;
+    translator_handlers[IRInstOperator::IRINST_OP_EQ_I] = &InstSelectorArm32::translate_eq_int32;
+    translator_handlers[IRInstOperator::IRINST_OP_NE_I] = &InstSelectorArm32::translate_ne_int32;
+
+	translator_handlers[IRInstOperator::IRINST_OP_BRANCH] = &InstSelectorArm32::translate_branch;
 
     translator_handlers[IRInstOperator::IRINST_OP_FUNC_CALL] = &InstSelectorArm32::translate_call;
     translator_handlers[IRInstOperator::IRINST_OP_ARG] = &InstSelectorArm32::translate_arg;
@@ -346,6 +357,91 @@ void InstSelectorArm32::translate_two_operator(Instruction * inst, string operat
     simpleRegisterAllocator.free(arg2);
     simpleRegisterAllocator.free(result);
 }
+/// @brief 无结果寄存器指令翻译成ARM32汇编
+/// @param inst IR指令
+/// @param operator_name 操作码
+void InstSelectorArm32::translate_no_result(Instruction * inst, string operator_name)
+{
+    Value * arg1 = inst->getOperand(0);
+    Value * arg2 = inst->getOperand(1);
+
+    int32_t arg1_reg_no = arg1->getRegId();
+    int32_t arg2_reg_no = arg2->getRegId();
+    int32_t load_arg1_reg_no, load_arg2_reg_no;
+
+    // 看arg1是否是寄存器，若是则寄存器寻址，否则要load变量到寄存器中
+    if (arg1_reg_no == -1) {
+
+        // 分配一个寄存器r8
+        load_arg1_reg_no = simpleRegisterAllocator.Allocate(arg1);
+
+        // arg1 -> r8，这里可能由于偏移不满足指令的要求，需要额外分配寄存器
+        iloc.load_var(load_arg1_reg_no, arg1);
+    } else {
+        load_arg1_reg_no = arg1_reg_no;
+    }
+
+    // 看arg2是否是寄存器，若是则寄存器寻址，否则要load变量到寄存器中
+    if (arg2_reg_no == -1) {
+
+        // 分配一个寄存器r9
+        load_arg2_reg_no = simpleRegisterAllocator.Allocate(arg2);
+
+        // arg2 -> r9
+        iloc.load_var(load_arg2_reg_no, arg2);
+    } else {
+        load_arg2_reg_no = arg2_reg_no;
+    }
+
+    // r8 + r9
+    iloc.inst_no_res("cmp",
+              PlatformArm32::regName[load_arg1_reg_no],
+              PlatformArm32::regName[load_arg2_reg_no]);
+
+    // 如果当前这条指令的结果在后续将会被使用
+    if (inst->isUsed()) {
+        int32_t result_reg_no = inst->getRegId();
+        int32_t load_result_reg_no;
+        
+        if (result_reg_no == -1) {
+            load_result_reg_no = simpleRegisterAllocator.Allocate(inst);
+		}else {
+			load_result_reg_no = result_reg_no;
+        }
+        
+        if (operator_name == "bgt") {
+            iloc.inst("movgt", PlatformArm32::regName[load_result_reg_no], "#1");
+            iloc.inst("movle", PlatformArm32::regName[load_result_reg_no], "#0");
+            iloc.store_var(load_result_reg_no, inst, ARM32_TMP_REG_NO);
+        } else if (operator_name == "blt") {
+            iloc.inst("movlt", PlatformArm32::regName[load_result_reg_no], "#1");
+            iloc.inst("movge", PlatformArm32::regName[load_result_reg_no], "#0");
+            iloc.store_var(load_result_reg_no, inst, ARM32_TMP_REG_NO);
+        } else if (operator_name == "bge") {
+            iloc.inst("movge", PlatformArm32::regName[load_result_reg_no], "#1");
+            iloc.inst("movlt", PlatformArm32::regName[load_result_reg_no], "#0");
+            iloc.store_var(load_result_reg_no, inst, ARM32_TMP_REG_NO);
+        } else if (operator_name == "ble") {
+            iloc.inst("movle", PlatformArm32::regName[load_result_reg_no], "#1");
+            iloc.inst("movgt", PlatformArm32::regName[load_result_reg_no], "#0");
+            iloc.store_var(load_result_reg_no, inst, ARM32_TMP_REG_NO);
+        } else if (operator_name == "beq") {
+            iloc.inst("moveq", PlatformArm32::regName[load_result_reg_no], "#1");
+            iloc.inst("movne", PlatformArm32::regName[load_result_reg_no], "#0");
+            iloc.store_var(load_result_reg_no, inst, ARM32_TMP_REG_NO);
+        } else if (operator_name == "bne") {
+            iloc.inst("movne", PlatformArm32::regName[load_result_reg_no], "#1");
+            iloc.inst("moveq", PlatformArm32::regName[load_result_reg_no], "#0");
+            iloc.store_var(load_result_reg_no, inst, ARM32_TMP_REG_NO);
+        }
+
+        simpleRegisterAllocator.free(inst);
+	}
+
+    // 释放寄存器
+    simpleRegisterAllocator.free(arg1);
+    simpleRegisterAllocator.free(arg2);
+}
 
 /// @brief 整数加法指令翻译成ARM32汇编
 /// @param inst IR指令
@@ -464,6 +560,77 @@ void InstSelectorArm32::translate_mod_int32(Instruction * inst)
     simpleRegisterAllocator.free(arg2);
     simpleRegisterAllocator.free(result);
     simpleRegisterAllocator.free(quotient_reg_no);
+}
+
+/// @brief 关系运算>指令翻译成ARM32汇编
+/// @param inst IR指令
+void InstSelectorArm32::translate_gt_int32(Instruction * inst)
+{
+    translate_no_result(inst, "bgt");
+    haveCmp = true;
+    cmpType = "bgt";
+}
+
+/// @brief 关系运算<指令翻译成ARM32汇编
+/// @param inst IR指令
+void InstSelectorArm32::translate_lt_int32(Instruction * inst)
+{
+	translate_no_result(inst, "blt");
+    haveCmp = true;
+    cmpType = "blt";
+}
+
+/// @brief 关系运算>=指令翻译成ARM32汇编
+/// @param inst IR指令
+void InstSelectorArm32::translate_ge_int32(Instruction * inst)
+{
+	translate_no_result(inst, "bge");
+    haveCmp = true;
+    cmpType = "bge";
+}
+
+/// @brief 关系运算<=指令翻译成ARM32汇编
+/// @param inst IR指令
+void InstSelectorArm32::translate_le_int32(Instruction * inst)
+{
+	translate_no_result(inst, "ble");
+    haveCmp = true;
+    cmpType = "ble";
+}
+
+/// @brief 关系运算==指令翻译成ARM32汇编
+/// @param inst IR指令
+void InstSelectorArm32::translate_eq_int32(Instruction * inst)
+{
+	translate_no_result(inst, "beq");
+    haveCmp = true;
+    cmpType = "beq";
+
+}
+
+/// @brief 关系运算!=指令翻译成ARM32汇编
+/// @param inst IR指令
+void InstSelectorArm32::translate_ne_int32(Instruction * inst)
+{
+	translate_no_result(inst, "bne");
+    haveCmp = true;
+    cmpType = "bne";
+}
+
+/// @brief 分支跳转指令翻译成ARM32汇编
+/// @param inst IR指令
+void InstSelectorArm32::translate_branch(Instruction * inst)
+{
+    Instanceof(branchInst, BranchInstruction *, inst);
+    auto trueLabel = branchInst->getTarget1()->getName();
+    auto falseLbel = branchInst->getTarget2()->getName();
+
+    if (haveCmp == true) {
+        iloc.branch(cmpType, trueLabel);
+        iloc.jump(falseLbel);
+        haveCmp = false;
+        cmpType.clear();
+	}
 }
 
 /// @brief 函数调用指令翻译成ARM32汇编

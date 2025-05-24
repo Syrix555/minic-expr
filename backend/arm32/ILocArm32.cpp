@@ -242,6 +242,15 @@ void ILocArm32::inst(std::string op, std::string rs, std::string arg1, std::stri
     emit(op, rs, arg1, arg2);
 }
 
+/// @brief 无结果，两个操作数指令
+/// @param op 操作码
+/// @param arg1 源操作数
+/// @param arg2 源操作数
+void ILocArm32::inst_no_res(std::string op, std::string arg1, std::string arg2)
+{
+    emit(op, arg1, arg2);
+}
+
 ///
 /// @brief 注释指令，不包含分号
 ///
@@ -553,4 +562,12 @@ void ILocArm32::nop()
 void ILocArm32::jump(std::string label)
 {
     emit("b", label);
+}
+
+/// @brief 条件跳转指令
+/// @param op 操作码
+/// @param label 目标Label名称
+void ILocArm32::branch(std::string op, std::string label)
+{
+    emit(op, label);
 }

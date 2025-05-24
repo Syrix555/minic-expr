@@ -164,6 +164,12 @@ public:
     /// @param arg2 源操作数
     void inst(std::string op, std::string rs, std::string arg1, std::string arg2);
 
+    /// @brief 无结果，两个操作数指令
+	/// @param op 操作码
+	/// @param arg1 源操作数
+	/// @param arg2 源操作数
+	void inst_no_res(std::string op, std::string arg1, std::string arg2);
+
     /// @brief 加载变量到寄存器
     /// @param rs_reg_no 结果寄存器
     /// @param var 变量
@@ -206,6 +212,13 @@ public:
     /// @param label 目标Label名称
     ///
     void jump(std::string label);
+
+    ///
+    /// @brief 条件跳转指令
+    /// @param op 操作码
+    /// @param label 目标Label名称
+    ///
+	void branch(std::string op, std::string label);
 
     /// @brief 输出汇编
     /// @param file 输出的文件指针

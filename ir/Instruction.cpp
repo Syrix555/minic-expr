@@ -72,3 +72,15 @@ bool Instruction::hasResultValue()
 {
     return !type->isVoidType();
 }
+
+///
+/// @brief 检查指令的结果是否被使用
+///
+bool Instruction::isUsed()
+{
+    if (this->uses.size() != 0) {
+        return true;
+    } else {
+        return false;
+	}
+}

@@ -93,6 +93,34 @@ protected:
     /// @param inst IR指令
     void translate_mod_int32(Instruction * inst);
 
+    /// @brief 关系运算>指令翻译成ARM32汇编
+    /// @param inst IR指令
+	void translate_gt_int32(Instruction * inst);
+
+    /// @brief 关系运算<指令翻译成ARM32汇编
+    /// @param inst IR指令
+	void translate_lt_int32(Instruction * inst);
+
+    /// @brief 关系运算>=指令翻译成ARM32汇编
+    /// @param inst IR指令
+	void translate_ge_int32(Instruction * inst);
+
+    /// @brief 关系运算<=指令翻译成ARM32汇编
+    /// @param inst IR指令
+	void translate_le_int32(Instruction * inst);
+
+    /// @brief 关系运算==指令翻译成ARM32汇编
+    /// @param inst IR指令
+	void translate_eq_int32(Instruction * inst);
+
+    /// @brief 关系运算!=指令翻译成ARM32汇编
+    /// @param inst IR指令
+	void translate_ne_int32(Instruction * inst);
+
+    /// @brief 分支跳转指令翻译成ARM32汇编
+    /// @param inst IR指令
+	void translate_branch(Instruction * inst);
+
     /// @brief 一元操作指令翻译成ARM32汇编
     /// @param inst IR指令
     /// @param parameter_name 操作码
@@ -102,6 +130,11 @@ protected:
     /// @param inst IR指令
     /// @param operator_name 操作码
     void translate_two_operator(Instruction * inst, string operator_name);
+
+    /// @brief 无结果寄存器指令翻译成ARM32汇编
+    /// @param inst IR指令
+    /// @param operator_name 操作码
+    void translate_no_result(Instruction * inst, string operator_name);
 
     /// @brief 函数调用指令翻译成ARM32汇编
     /// @param inst IR指令
@@ -141,6 +174,12 @@ protected:
     /// @brief 显示IR指令内容
     ///
     bool showLinearIR = false;
+
+    /// @brief 判断先前是否有cmp指令
+    bool haveCmp = false;
+
+    /// @brief 保存关系运算类型
+    std::string cmpType;
 
 public:
     /// @brief 构造函数

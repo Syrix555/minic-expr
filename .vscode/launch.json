@@ -10,11 +10,7 @@
 			// 调试的名称，可修改
 			"name": "Debug minic Antlr4 Grammar",
 			// 文法解析的输入文件
-<<<<<<< HEAD
 			"input": "tests/test6-3.c",
-=======
-			"input": "tests/test1-1.c",
->>>>>>> upstream/main
 			// 分析树可视化，也就是具体语法树AST
 			"visualParseTree": true,
 			// 文本输出分析树
@@ -30,30 +26,18 @@
 			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/minic",
-<<<<<<< HEAD
 			"args": ["-S", "-A", "-D", "-o", "tests/test3-1.ir", "tests/test3-1.c"],
-=======
-			"args": ["-S", "-I", "-D", "-o", "tests/test1-1.ir", "tests/test1-1.c"],
->>>>>>> upstream/main
 			"cwd": "${workspaceFolder}",
 			// 不需要编译时可注释掉
 			"preLaunchTask": "CMake: build"
 		},
 		{
 			// 可采用GCC或者Clang编译器
-<<<<<<< HEAD
 			"name": "Debug IR",
 			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/minic",
-			"args": ["-S", "-A", "-I", "-o", "tests/test6-3.ir", "tests/test6-3.c"],
-=======
-			"name": "minic Debug IR",
-			"type": "cppdbg",
-			"request": "launch",
-			"program": "${workspaceFolder}/build/minic",
-			"args": ["-S", "-D", "-I", "-o", "tests/test1-1.ir", "tests/test1-1.c"],
->>>>>>> upstream/main
+			"args": ["-S", "-A", "-I", "-o", "tests/test6-4.ir", "tests/test6-4.c"],
 			// 程序的入口（main函数的入口）是否停止
 			"stopAtEntry": true,
 			"cwd": "${workspaceFolder}",
@@ -88,19 +72,11 @@
 		},
 		{
 			// 可采用GCC或者Clang编译器
-<<<<<<< HEAD
 			"name": "Debug AST",
 			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/minic",
 			"args": ["-S", "-A", "-T", "-o", "tests/test6-3.png", "tests/test6-3.c"],
-=======
-			"name": "minic Debug AST",
-			"type": "cppdbg",
-			"request": "launch",
-			"program": "${workspaceFolder}/build/minic",
-			"args": ["-S", "-A", "-T", "-o", "tests/test1-1.png", "tests/test1-1.c"],
->>>>>>> upstream/main
 			// 程序的入口（main函数的入口）是否停止
 			"stopAtEntry": true,
 			"cwd": "${workspaceFolder}",
@@ -139,27 +115,16 @@
 			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/minic",
-<<<<<<< HEAD
-			"args": ["-S", "-A", "-o", "tests/test3-3.s", "tests/test3-3.c"],
-=======
-			"args": ["-S", "-A", "-o", "tests/test1-1.s", "tests/test1-1.c"],
->>>>>>> upstream/main
+			"args": ["-S", "-A", "-o", "tests/test6-4.s", "tests/test6-4.c"],
 			"cwd": "${workspaceFolder}",
 			// 不需要编译时可注释掉
 			"preLaunchTask": "CMake: build"
 		},
 		{
-<<<<<<< HEAD
 			"name": "Qemu Debug ARM32",
 			"type": "lldb",
 			"request": "launch",
-			"program": "${workspaceFolder}/tests/test3-2",
-=======
-			"name": "Qemu Debug minic arm32",
-			"type": "cppdbg",
-			"request": "launch",
-			"program": "${workspaceFolder}/tests/test1-1",
->>>>>>> upstream/main
+			"program": "${workspaceFolder}/tests/test6-4",
 			"args": [],
 			// 程序的入口（main函数的入口）是否停止
 			"stopAtEntry": true,
