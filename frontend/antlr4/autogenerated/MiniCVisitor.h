@@ -45,6 +45,12 @@ public:
 
     virtual std::any visitIfStatement(MiniCParser::IfStatementContext *context) = 0;
 
+    virtual std::any visitWhileStatement(MiniCParser::WhileStatementContext *context) = 0;
+
+    virtual std::any visitBreakStatement(MiniCParser::BreakStatementContext *context) = 0;
+
+    virtual std::any visitContinueStatement(MiniCParser::ContinueStatementContext *context) = 0;
+
     virtual std::any visitExpr(MiniCParser::ExprContext *context) = 0;
 
     virtual std::any visitCond(MiniCParser::CondContext *context) = 0;
@@ -74,6 +80,12 @@ public:
     virtual std::any visitLOrOp(MiniCParser::LOrOpContext *context) = 0;
 
     virtual std::any visitIfStmt(MiniCParser::IfStmtContext *context) = 0;
+
+    virtual std::any visitWhileStmt(MiniCParser::WhileStmtContext *context) = 0;
+
+    virtual std::any visitBreakStmt(MiniCParser::BreakStmtContext *context) = 0;
+
+    virtual std::any visitContinueStmt(MiniCParser::ContinueStmtContext *context) = 0;
 
     virtual std::any visitUnaryExp(MiniCParser::UnaryExpContext *context) = 0;
 

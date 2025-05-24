@@ -40,7 +40,10 @@ stmt:
 	| lVal T_ASSIGN expr T_SEMICOLON	# assignStatement
 	| block								# blockStatement
 	| expr? T_SEMICOLON					# expressionStatement
-	| ifStmt							# ifStatement;
+	| ifStmt							# ifStatement
+	| whileStmt                         # whileStatement
+	| breakStmt							# breakStatement
+	| continueStmt						# continueStatement;
 
 // 表达式文法 expr : 表达式目前支持加法与减法，乘除法运算
 expr: addExp;
@@ -86,6 +89,15 @@ lOrOp: T_OR;
 
 // if语句
 ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt (T_ELSE stmt)?;
+
+// while语句
+whileStmt: T_WHILE T_L_PAREN cond T_R_PAREN stmt;
+
+// break语句
+breakStmt : T_BREAK T_SEMICOLON;
+
+// continue语句
+continueStmt: T_CONTINUE T_SEMICOLON;
 
 // 一元表达式
 unaryExp:
@@ -140,6 +152,9 @@ T_INT: 'int';
 T_VOID: 'void';
 T_IF: 'if';
 T_ELSE: 'else';
+T_WHILE: 'while';
+T_BREAK: 'break';
+T_CONTINUE: 'continue';
 
 T_ID: [a-zA-Z_][a-zA-Z0-9_]*;
 T_DIGIT: '0' [xX] [0-9a-fA-F]+ |

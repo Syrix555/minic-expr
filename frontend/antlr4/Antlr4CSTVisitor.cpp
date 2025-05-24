@@ -164,7 +164,10 @@ std::any MiniCCSTVisitor::visitStmt(MiniCParser::StmtContext * ctx)
     // | T_RETURN expr T_SEMICOLON # returnStatement
     // | block  # blockStatement
     // | expr ? T_SEMICOLON #expressionStatement
-    // | ifStmt	# ifStatement;
+    // | ifStmt	# ifStatement
+	// | whileStmt                         # whileStatement
+	// | breakStmt							# breakStatement
+	// | continueStmt						# continueStatement;
     if (Instanceof(assignCtx, MiniCParser::AssignStatementContext *, ctx)) {
         return visitAssignStatement(assignCtx);
     } else if (Instanceof(returnCtx, MiniCParser::ReturnStatementContext *, ctx)) {
@@ -175,6 +178,12 @@ std::any MiniCCSTVisitor::visitStmt(MiniCParser::StmtContext * ctx)
         return visitExpressionStatement(exprCtx);
     } else if (Instanceof(ifCtx, MiniCParser::IfStatementContext *, ctx)) {
         return visitIfStatement(ifCtx);
+    } else if (Instanceof(whileCtx, MiniCParser::WhileStatementContext *, ctx)) {
+        return visitWhileStatement(whileCtx);
+	} else if (Instanceof(breakCtx, MiniCParser::BreakStatementContext *, ctx)) {
+        return visitBreakStatement(breakCtx);
+	} else if (Instanceof(continueCtx, MiniCParser::ContinueStatementContext *, ctx)) {
+        return visitContinueStatement(continueCtx);
 	}
 
     return nullptr;
@@ -202,6 +211,33 @@ std::any MiniCCSTVisitor::visitIfStatement(MiniCParser::IfStatementContext * ctx
 	// 识别产生式：stmt: ifStmt
 
     return visitIfStmt(ctx->ifStmt());
+}
+
+/// @brief 内部产生的非终结符whileStatement的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitWhileStatement(MiniCParser::WhileStatementContext * ctx)
+{
+    // 识别产生式：stmt: whileStmt
+    
+    return visitWhileStmt(ctx->whileStmt());
+}
+
+/// @brief 内部产生的非终结符breakStatement的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitBreakStatement(MiniCParser::BreakStatementContext * ctx)
+{
+    // 识别产生式：stmt: breakStmt
+    
+    return visitBreakStmt(ctx->breakStmt());
+}
+
+/// @brief 内部产生的非终结符continueStatement的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitContinueStatement(MiniCParser::ContinueStatementContext * ctx)
+{
+    // 识别产生式：stmt: continueStmt
+    
+    return visitContinueStmt(ctx->continueStmt());
 }
 
 /// @brief 非终结运算符expr的遍历
@@ -578,6 +614,44 @@ std::any MiniCCSTVisitor::visitIfStmt(MiniCParser::IfStmtContext * ctx)
                                             elseNode);
 
     return ifNode;
+}
+
+/// @brief 非终结符whileStmt的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitWhileStmt(MiniCParser::WhileStmtContext * ctx)
+{
+    // 识别文法产生式：whileStmt: T_WHILE T_L_PAREN cond T_R_PAREN stmt
+
+    // 首先识别cond条件表达式
+    ast_node * condNode = std::any_cast<ast_node *>(visitCond(ctx->cond()));
+
+    // 然后识别循环体
+    ast_node * loopNode = std::any_cast<ast_node *>(visitStmt(ctx->stmt()));
+
+    // 创建AST节点
+    ast_node * whileNode = create_contain_node(ast_operator_type::AST_OP_WHILE,
+                                               condNode,
+                                               loopNode);
+
+    return whileNode;
+}
+
+/// @brief 非终结符breakStmt的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitBreakStmt(MiniCParser::BreakStmtContext * ctx)
+{
+	// 识别文法产生式：breakStmt : T_BREAK T_SEMICOLON
+
+    return create_contain_node(ast_operator_type::AST_OP_BREAK);
+}
+
+/// @brief 非终结符continueStmt的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitContinueStmt(MiniCParser::ContinueStmtContext * ctx)
+{
+    // 识别文法产生式：continueStmt: T_CONTINUE T_SEMICOLON
+
+    return create_contain_node(ast_operator_type::AST_OP_CONTINUE);
 }
 
 /// @brief 非终结符unaryExp的分析

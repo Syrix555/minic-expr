@@ -102,6 +102,27 @@ protected:
     ///
     std::any visitIfStatement(MiniCParser::IfStatementContext * ctx) override;
 
+    ///
+    /// @brief 内部产生的非终结符whileStatement的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+    std::any visitWhileStatement(MiniCParser::WhileStatementContext * ctx) override;
+
+    ///
+    /// @brief 内部产生的非终结符breakStatement的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+    std::any visitBreakStatement(MiniCParser::BreakStatementContext * ctx) override;
+
+    ///
+    /// @brief 内部产生的非终结符continueStatement的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+    std::any visitContinueStatement(MiniCParser::ContinueStatementContext * ctx) override;
+
     /// @brief 非终结符expr的遍历
     /// @param ctx CST上下文
     /// @return AST的节点
@@ -204,6 +225,27 @@ protected:
     /// @return std::any 类型
     ///
     std::any visitIfStmt(MiniCParser::IfStmtContext * ctx) override;
+
+    ///
+    /// @brief 非终结符whileStmt的分析
+    /// @param ctx CST上下文
+    /// @return std::any 类型
+    ///
+    std::any visitWhileStmt(MiniCParser::WhileStmtContext * ctx) override;
+
+    ///
+    /// @brief 非终结符breakStmt的分析
+    /// @param ctx CST上下文
+    /// @return std::any 类型
+    ///
+    std::any visitBreakStmt(MiniCParser::BreakStmtContext * ctx) override;
+
+    ///
+    /// @brief 非终结符continueStmt的分析
+    /// @param ctx CST上下文
+    /// @return std::any 类型
+    ///
+    std::any visitContinueStmt(MiniCParser::ContinueStmtContext * ctx) override;
 
     ///
     /// @brief 非终结符unaryExp的分析
