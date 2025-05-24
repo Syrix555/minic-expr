@@ -75,6 +75,9 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_ASSIGN] = &IRGenerator::ir_assign;
     ast2ir_handlers[ast_operator_type::AST_OP_RETURN] = &IRGenerator::ir_return;
     ast2ir_handlers[ast_operator_type::AST_OP_IF] = &IRGenerator::ir_if;
+    ast2ir_handlers[ast_operator_type::AST_OP_WHILE] = &IRGenerator::ir_while;
+    ast2ir_handlers[ast_operator_type::AST_OP_BREAK] = &IRGenerator::ir_break;
+    ast2ir_handlers[ast_operator_type::AST_OP_CONTINUE] = &IRGenerator::ir_continue;
 
     /* 函数调用 */
     ast2ir_handlers[ast_operator_type::AST_OP_FUNC_CALL] = &IRGenerator::ir_function_call;
@@ -685,7 +688,8 @@ bool IRGenerator::ir_cmp_lt(ast_node * node)
     node->val = ltInst;
 
     // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
-    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF ||
+        node->parent->node_type == ast_operator_type::AST_OP_WHILE) {
         BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
                                                              ltInst,
                                                              node->trueLabel,
@@ -734,7 +738,8 @@ bool IRGenerator::ir_cmp_gt(ast_node * node)
     node->val = gtInst;
 
     // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
-    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF ||
+        node->parent->node_type == ast_operator_type::AST_OP_WHILE) {
         BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
                                                              node->val,
                                                              node->trueLabel,
@@ -783,7 +788,8 @@ bool IRGenerator::ir_cmp_le(ast_node * node)
     node->val = leInst;
 
     // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
-    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF ||
+        node->parent->node_type == ast_operator_type::AST_OP_WHILE) {
         BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
                                                              node->val,
                                                              node->trueLabel,
@@ -832,7 +838,8 @@ bool IRGenerator::ir_cmp_ge(ast_node * node)
     node->val = geInst;
 
     // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
-    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF ||
+        node->parent->node_type == ast_operator_type::AST_OP_WHILE) {
         BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
                                                              node->val,
                                                              node->trueLabel,
@@ -881,7 +888,8 @@ bool IRGenerator::ir_cmp_eq(ast_node * node)
     node->val = eqInst;
 
     // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
-    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF ||
+        node->parent->node_type == ast_operator_type::AST_OP_WHILE) {
         BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
                                                              node->val,
                                                              node->trueLabel,
@@ -930,7 +938,8 @@ bool IRGenerator::ir_cmp_ne(ast_node * node)
     node->val = neInst;
 
     // 如果if的条件块就是本指令对应的node，那么添加if语句的条件跳转语句
-    if (node->parent->node_type == ast_operator_type::AST_OP_IF) {
+    if (node->parent->node_type == ast_operator_type::AST_OP_IF ||
+        node->parent->node_type == ast_operator_type::AST_OP_WHILE) {
         BranchInstruction * ifBranch = new BranchInstruction(module->getCurrentFunction(),
                                                              node->val,
                                                              node->trueLabel,
@@ -1154,6 +1163,7 @@ bool IRGenerator::ir_not(ast_node * node)
 
     src_node->inherit_label(node);
     if (node->parent->node_type == ast_operator_type::AST_OP_IF ||
+        node->parent->node_type == ast_operator_type::AST_OP_WHILE ||
         node->parent->node_type == ast_operator_type::AST_OP_AND ||
         node->parent->node_type == ast_operator_type::AST_OP_OR) {
         src_node->swap_true_false();
@@ -1192,7 +1202,12 @@ bool IRGenerator::ir_if(ast_node * node)
 
     // 获取当前作用域使用的函数
     Function * currentFunc = module->getCurrentFunction();
-	ConstInt * zero = module->newConstInt(0);
+    ConstInt * zero = module->newConstInt(0);
+
+    if (node->parent->node_type == ast_operator_type::AST_OP_BLOCK &&
+        node->parent->parent->node_type == ast_operator_type::AST_OP_WHILE) {
+        node->inherit_label(node->parent);
+	}
 
     // 先分别创建三个Label：真入口、假入口、分支出口
     LabelInstruction * trueLabel = new LabelInstruction(currentFunc);
@@ -1201,6 +1216,7 @@ bool IRGenerator::ir_if(ast_node * node)
 
     //! 将创建的真假出口保存到节点中，以便条件表达式计算时使用这些出口
     cond_node->set_label(trueLabel, falseLabel, ifExitLabel);
+    true_node->inherit_label(node);
 
     // 获取cond节点，并生成线性IR
     ast_node * cond_res = ir_visit_ast_node(cond_node);
@@ -1246,6 +1262,7 @@ bool IRGenerator::ir_if(ast_node * node)
     // 接下来根据是否有falseBlock进行不同的操作
     if (node->sons.size() > 2) {
         ast_node * false_node = node->sons[2];
+		false_node->inherit_label(node);
 
 		// 存在falseBlock,需要插入无条件跳转出口命令
         GotoInstruction * ifExit = new GotoInstruction(currentFunc, ifExitLabel);
@@ -1267,6 +1284,99 @@ bool IRGenerator::ir_if(ast_node * node)
     // 最后插入出口标签,回到原函数流程
 	node->blockInsts.addInst(ifExitLabel);
 
+    return true;
+}
+
+/// @brief while语句块翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_while(ast_node * node)
+{
+    ast_node * cond_node = node->sons[0];
+    ast_node * loop_node = node->sons[1];
+
+	// 获取当前作用域使用的函数
+	Function * currentFunc = module->getCurrentFunction();
+	ConstInt * zero = module->newConstInt(0);
+
+	// 先分别创建三个Label：循环入口、循环体入口、循环语句出口
+	LabelInstruction * whileEntryLabel = new LabelInstruction(currentFunc);
+	LabelInstruction * loopEntryLabel = new LabelInstruction(currentFunc);
+    LabelInstruction * whileExitLabel = new LabelInstruction(currentFunc);
+
+	//! 将创建的真假出口保存到节点中，以便条件表达式计算时使用这些出口
+    cond_node->set_label(loopEntryLabel, whileExitLabel, whileExitLabel);
+    // 循环体节点也需要继承标签，以便break/continue使用
+    loop_node->set_label(loopEntryLabel, whileEntryLabel, whileExitLabel);
+
+    // 首先插入循环入口标签
+    node->blockInsts.addInst(whileEntryLabel);
+
+    // 获取cond节点，并生成线性IR
+    ast_node * cond_res = ir_visit_ast_node(cond_node);
+    if (!cond_res) {
+        // 条件中某个变量无定值
+        return false;
+    }
+
+    node->blockInsts.addInst(cond_res->blockInsts);
+
+    //! 只能当仅有单变量时创建跳转指令，避免与逻辑运算发生冲突
+    if (cond_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
+        cond_node->node_type == ast_operator_type::AST_OP_SUB ||
+        cond_node->node_type == ast_operator_type::AST_OP_NOT) {
+		Value * cond_val;
+        if (cond_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
+            cond_node->node_type == ast_operator_type::AST_OP_SUB) {
+            BinaryInstruction * neInst = new BinaryInstruction(currentFunc,
+                                                               IRInstOperator::IRINST_OP_NE_I,
+                                                               cond_res->val,
+                                                               zero,
+                                                               IntegerType::getTypeBool());
+            node->blockInsts.addInst(neInst);
+            cond_val = neInst;
+        } else {
+            cond_val = cond_res->val;
+		}
+        BranchInstruction * ifBranch = new BranchInstruction(currentFunc,
+														     cond_val,
+														     loopEntryLabel,
+														     whileExitLabel);
+		node->blockInsts.addInst(ifBranch);
+    }
+
+    // 处理循环体
+    node->blockInsts.addInst(loopEntryLabel);
+
+    ast_node * loop_res = ir_visit_ast_node(loop_node);
+    node->blockInsts.addInst(loop_res->blockInsts);
+
+    // 循环体结束后必须无条件跳转到循环起始位置
+    node->blockInsts.addInst(new GotoInstruction(currentFunc, whileEntryLabel));
+
+    // 最后插入循环出口
+    node->blockInsts.addInst(whileExitLabel);
+
+    return true;
+}
+
+/// @brief break语句块翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_break(ast_node * node)
+{
+    auto breakLabel = node->parent->endLabel;
+    node->blockInsts.addInst(new GotoInstruction(module->getCurrentFunction(), breakLabel));
+    return true;
+}
+
+/// @brief continue语句块翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_continue(ast_node * node)
+{
+    auto continueLabel = node->parent->falseLabel;
+    node->blockInsts.addInst(new GotoInstruction(module->getCurrentFunction(), continueLabel));
     return true;
 }
 

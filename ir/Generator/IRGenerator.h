@@ -147,6 +147,21 @@ protected:
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_if(ast_node * node);
 
+	/// @brief while语句块翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_while(ast_node * node);
+
+	/// @brief break语句块翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_break(ast_node * node);
+
+	/// @brief continue语句块翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_continue(ast_node * node);
+
     /// @brief 赋值AST节点翻译成线性中间IR
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
