@@ -92,7 +92,7 @@ void Function::toString(std::string & str)
             str += ", ";
         }
 
-        std::string param_str = param->getType()->toString() + param->getIRName();
+        std::string param_str = param->getType()->toString() + " " + param->getIRName();
 
         str += param_str;
     }

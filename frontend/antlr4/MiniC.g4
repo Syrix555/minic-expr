@@ -41,7 +41,7 @@ varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON;
 basicType: T_INT;
 
 // 变量定义
-varDef: T_ID;
+varDef: T_ID (T_ASSIGN expr)?;
 
 // 目前语句支持return和赋值语句
 stmt:
@@ -55,7 +55,7 @@ stmt:
 	| continueStmt						# continueStatement;
 
 // 表达式文法 expr : 表达式目前支持加法与减法，乘除法运算
-expr: addExp;
+expr: lOrExp;
 
 // 条件表达式 cond : 目前支持关系表达式、相等性表达式和逻辑表达式
 cond: lOrExp;

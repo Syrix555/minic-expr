@@ -14,6 +14,8 @@
 /// <tr><td>2024-11-23 <td>1.1     <td>zenglj  <td>表达式版增强
 /// </table>
 ///
+#include <any>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <sys/types.h>
@@ -25,6 +27,7 @@
 #include "BranchInstruction.h"
 #include "Common.h"
 #include "ConstInt.h"
+#include "FormalParam.h"
 #include "Function.h"
 #include "IRCode.h"
 #include "IRGenerator.h"
@@ -36,6 +39,7 @@
 #include "LabelInstruction.h"
 #include "ExitInstruction.h"
 #include "FuncCallInstruction.h"
+#include "Type.h"
 #include "UnaryInstruction.h"
 #include "BinaryInstruction.h"
 #include "MoveInstruction.h"
@@ -242,7 +246,7 @@ bool IRGenerator::ir_function_define(ast_node * node)
     }
     newFunc->setReturnValue(retValue);
 
-    // TODO:这里最好设置返回值变量的初值为0，以便在没有返回值时能够返回0
+    // TODO 这里最好设置返回值变量的初值为0，以便在没有返回值时能够返回0
     if (newFunc->getName() == "main") {
 
 	}
@@ -293,6 +297,21 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
     // 然后产生赋值指令，用于把表达实参值的临时变量拷贝到形参局部变量上。
     // 请注意这些指令要放在Entry指令后面，因此处理的先后上要注意。
 
+    auto currentFunc = module->getCurrentFunction();
+    for (auto son: node->sons) {
+		// 获取形参类型
+        Type * param_type = son->sons[0]->type;
+        // 创建函数形参
+        FormalParam * param = new FormalParam(param_type, "");
+        // 保存到函数的形参列表中
+        currentFunc->getParams().push_back(param);
+
+        // 创建临时变量保存形参传入值
+        son->val = module->newVarValue(param_type, son->sons[1]->name);
+
+        // 产生赋值指令拷贝值
+        node->blockInsts.addInst(new MoveInstruction(currentFunc, son->val, param));
+	}
     return true;
 }
 
@@ -987,7 +1006,8 @@ bool IRGenerator::ir_and(ast_node * node)
     ConstInt * zero = module->newConstInt(0);
 
     // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
-    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
+        left->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
         BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              left->val,
@@ -1028,15 +1048,17 @@ bool IRGenerator::ir_and(ast_node * node)
 	// 	(node->parent->node_type == ast_operator_type::AST_OP_OR || node == node->parent->sons[1])) {
 	// 		falseLabel = node->endLabel;
     // }
-    
+
     // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
-    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
-        BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
+    //! 这里需要重新处理条件，规定调用的函数必须有返回值
+    if (right->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
+        right->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
+        BinaryInstruction * src2_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              right->val,
                                                              zero,
                                                              IntegerType::getTypeBool());
-        node->blockInsts.addInst(src1_cmp);
+        node->blockInsts.addInst(src2_cmp);
 	}
 
     // 基于结果进行真出口与假出口的传递
@@ -1090,7 +1112,8 @@ bool IRGenerator::ir_or(ast_node * node)
 
     // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
     // TODO 同样不完善，需要修改
-    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
+        left->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
         BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              left->val,
@@ -1134,13 +1157,14 @@ bool IRGenerator::ir_or(ast_node * node)
 
     // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
     // TODO 同样不完善，需要修改
-    if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
-        BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
+    if (right->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
+        right->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
+        BinaryInstruction * src2_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              right->val,
                                                              zero,
                                                              IntegerType::getTypeBool());
-        node->blockInsts.addInst(src1_cmp);
+        node->blockInsts.addInst(src2_cmp);
 	}
 
     // 基于结果进行真出口与假出口的传递（如果对应的是and/or运算就无需创建）
@@ -1183,7 +1207,8 @@ bool IRGenerator::ir_not(ast_node * node)
     node->val = src_res->val;
 
     // TODO 处理条件仅存在单变量取反的情况(if语句中同理)，这里不够完善
-    if (src_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+    if (src_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
+        src_node->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
 		BinaryInstruction * eqInst = new BinaryInstruction(module->getCurrentFunction(),
 														   IRInstOperator::IRINST_OP_EQ_I,
 														   src_res->val,
@@ -1249,11 +1274,13 @@ bool IRGenerator::ir_if(ast_node * node)
         } else {
             cond_val = cond_res->val;
 		}
-        BranchInstruction * ifBranch = new BranchInstruction(currentFunc,
-														     cond_val,
-														     trueLabel,
-														     falseLabel);
-		node->blockInsts.addInst(ifBranch);
+        if (cond_val != nullptr) {
+			BranchInstruction * ifBranch = new BranchInstruction(currentFunc,
+															   cond_val,
+															  trueLabel,
+															  falseLabel);
+			node->blockInsts.addInst(ifBranch);
+		}
 	}
 
     // 接下来开始处理条件为真的语句块
@@ -1525,6 +1552,7 @@ bool IRGenerator::ir_declare_statment(ast_node * node)
         if (!result) {
             break;
         }
+		node->blockInsts.addInst(child->blockInsts);
     }
 
     return result;
@@ -1540,6 +1568,17 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
     // TODO 这里可强化类型等检查
 
     node->val = module->newVarValue(node->sons[0]->type, node->sons[1]->name);
+
+    if (node->sons.size() > 2) {
+        ast_node * init = ir_visit_ast_node(node->sons[2]);
+        if (!init) {
+            return false;
+        }
+        MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), node->val, init->val);
+
+        node->blockInsts.addInst(init->blockInsts);
+        node->blockInsts.addInst(movInst);
+	}
 
     return true;
 }

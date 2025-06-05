@@ -303,9 +303,9 @@ std::any MiniCCSTVisitor::visitContinueStatement(MiniCParser::ContinueStatementC
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitExpr(MiniCParser::ExprContext * ctx)
 {
-    // 识别产生式：expr: addExp
+    // 识别产生式：expr: lOrExp
 
-    return visitAddExp(ctx->addExp());
+    return visitLOrExp(ctx->lOrExp());
 }
 
 /// @brief 非终结符cond的遍历
@@ -829,8 +829,13 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
         // 创建类型节点
         ast_node * type_node = create_type_node(typeAttr);
 
+		ast_node * expr_node = nullptr;
+        if (varCtx->T_ASSIGN()) {
+            expr_node = std::any_cast<ast_node *>(visitExpr(varCtx->expr()));
+		}
+
         // 创建变量定义节点
-        ast_node * decl_node = ast_node::New(ast_operator_type::AST_OP_VAR_DECL, type_node, id_node, nullptr);
+        ast_node * decl_node = ast_node::New(ast_operator_type::AST_OP_VAR_DECL, type_node, id_node, expr_node, nullptr);
 
         // 插入到变量声明语句
         (void) stmt_node->insert_son_node(decl_node);
@@ -843,7 +848,7 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
 {
-    // varDef: T_ID;
+    // varDef: T_ID (T_ASSIGN expr)?;
 
     auto varId = ctx->T_ID()->getText();
 
