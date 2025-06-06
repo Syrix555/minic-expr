@@ -147,7 +147,7 @@ std::any MiniCCSTVisitor::visitFuncFParams(MiniCParser::FuncFParamsContext * ctx
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
 {
-	// 识别的文法产生式：funcFParam: basicType T_ID;
+	// 识别的文法产生式：funcFParam: basicType T_ID (T_L_BRACKET expr T_R_BRACKET)*;
 
     type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
     auto varId = ctx->T_ID()->getText();
@@ -155,6 +155,14 @@ std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
 
     ast_node * type_node = create_type_node(typeAttr);
     ast_node * id_node = ast_node::New(varId, lineNo);
+
+	for (auto indexCtx: ctx->expr()) {
+        ast_node * index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX);
+        ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
+
+        (void) index_node->insert_son_node(expr_node);
+        (void) id_node->insert_son_node(index_node);
+	}
 
     return ast_node::New(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, type_node, id_node, nullptr);
 }
@@ -644,6 +652,29 @@ std::any MiniCCSTVisitor::visitLOrOp(MiniCParser::LOrOpContext * ctx)
 	}
 }
 
+/// @brief 非终结符initVal的分析
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitInitVal(MiniCParser::InitValContext * ctx)
+{
+    // 识别文法产生式：initVal: expr | T_L_BRACE initVal (T_COMMA initVal)* T_R_BRACE;
+
+    if (ctx->expr()) {
+        return visitExpr(ctx->expr());
+    } else if (ctx->T_L_BRACE()) {
+
+        ast_node * multiple_val_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INIT);
+
+        for (auto valCtx: ctx->initVal()) {
+            ast_node * val_node = std::any_cast<ast_node *>(visitInitVal(valCtx));
+            (void) multiple_val_node->insert_son_node(val_node);
+        }
+
+        return multiple_val_node;
+    }
+
+    return nullptr;
+}
+
 /// @brief 非终结符ifStmt的分析
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitIfStmt(MiniCParser::IfStmtContext * ctx)
@@ -807,7 +838,17 @@ std::any MiniCCSTVisitor::visitLVal(MiniCParser::LValContext * ctx)
     // 获取行号
     int64_t lineNo = (int64_t) ctx->T_ID()->getSymbol()->getLine();
 
-    return ast_node::New(varId, lineNo);
+    ast_node * id_node = ast_node::New(varId, lineNo);
+
+    for (auto indexCtx: ctx->expr()) {
+        ast_node * index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX);
+        ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
+
+        (void) index_node->insert_son_node(expr_node);
+        (void) id_node->insert_son_node(index_node);
+	}
+
+    return id_node;
 }
 
 /// @brief 非终结符VarDecl的分析
@@ -831,7 +872,7 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
 
 		ast_node * expr_node = nullptr;
         if (varCtx->T_ASSIGN()) {
-            expr_node = std::any_cast<ast_node *>(visitExpr(varCtx->expr()));
+            expr_node = std::any_cast<ast_node *>(visitInitVal(varCtx->initVal()));
 		}
 
         // 创建变量定义节点
@@ -848,14 +889,25 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
 {
-    // varDef: T_ID (T_ASSIGN expr)?;
+    // varDef: T_ID (T_L_BRACKET expr T_R_BRACKET)* (T_ASSIGN initVal)?;
+    // 赋值操作不在这里处理
 
     auto varId = ctx->T_ID()->getText();
 
     // 获取行号
     int64_t lineNo = (int64_t) ctx->T_ID()->getSymbol()->getLine();
 
-    return ast_node::New(varId, lineNo);
+    ast_node * def_node = ast_node::New(varId, lineNo);
+
+    for (auto indexCtx: ctx->expr()) {
+        ast_node * index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX);
+        ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
+
+        (void) index_node->insert_son_node(expr_node);
+        (void) def_node->insert_son_node(index_node);
+	}
+
+    return def_node;
 }
 
 /// @brief 非终结符BasicType的分析

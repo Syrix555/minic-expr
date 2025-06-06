@@ -1,5 +1,5 @@
 
-// Generated from /home/syrix/compile/minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
+// Generated from MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -144,6 +144,10 @@ public:
   }
 
   virtual std::any visitLOrOp(MiniCParser::LOrOpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitInitVal(MiniCParser::InitValContext *ctx) override {
     return visitChildren(ctx);
   }
 

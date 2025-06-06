@@ -232,7 +232,14 @@ protected:
     /// @param ctx CST上下文
     /// @return std::any AST的节点
     ///
-	std::any visitLOrOp(MiniCParser::LOrOpContext * ctx) override;
+    std::any visitLOrOp(MiniCParser::LOrOpContext * ctx) override;
+
+    ///
+    /// @brief 非终结符initVal的分析
+    /// @param ctx CST上下文
+    /// @return std::any AST的节点
+    ///
+    std::any visitInitVal(MiniCParser::InitValContext * ctx) override;
 
     ///
     /// @brief 非终结符ifStmt的分析

@@ -139,6 +139,12 @@ enum class ast_operator_type : int {
     /// @brief continue语句
     AST_OP_CONTINUE,
 
+    /// @brief 数组赋初值
+    AST_OP_ARRAY_INIT,
+
+    /// @brief 数组索引
+    AST_OP_ARRAY_INDEX,
+
     /// @brief 最大标识符，表示非法运算符
     AST_OP_MAX,
 };

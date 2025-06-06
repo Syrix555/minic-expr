@@ -1,5 +1,5 @@
 
-// Generated from /home/syrix/compile/minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
+// Generated from MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -84,6 +84,8 @@ public:
     virtual std::any visitLOrExp(MiniCParser::LOrExpContext *context) = 0;
 
     virtual std::any visitLOrOp(MiniCParser::LOrOpContext *context) = 0;
+
+    virtual std::any visitInitVal(MiniCParser::InitValContext *context) = 0;
 
     virtual std::any visitIfStmt(MiniCParser::IfStmtContext *context) = 0;
 

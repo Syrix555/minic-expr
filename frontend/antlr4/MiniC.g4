@@ -13,7 +13,7 @@ grammar MiniC;
 // 源文件编译单元定义
 compileUnit: (funcDef | varDecl)* EOF;
 
-// 函数定义，目前不支持形参，也不支持返回void类型等
+// 函数定义，目前支持形参，也支持返回void类型等
 funcDef: funcType T_ID T_L_PAREN funcFParams? T_R_PAREN block;
 
 // 函数返回值类型
@@ -23,7 +23,7 @@ funcType: T_INT | T_VOID;
 funcFParams: funcFParam (T_COMMA funcFParam)*;
 
 // 函数形参定义
-funcFParam: basicType T_ID;
+funcFParam: basicType T_ID (T_L_BRACKET expr T_R_BRACKET)*;
 
 // 语句块看用作函数体，这里允许多个语句，并且不含任何语句
 block: T_L_BRACE blockItemList? T_R_BRACE;
@@ -34,14 +34,14 @@ blockItemList: blockItem+;
 // 每个Item可以是一个语句，或者变量声明语句
 blockItem: stmt | varDecl;
 
-// 变量声明，目前不支持变量含有初值
+// 变量声明，目前支持变量含有初值
 varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON;
 
 // 基本类型
 basicType: T_INT;
 
-// 变量定义
-varDef: T_ID (T_ASSIGN expr)?;
+// 变量定义，增加数组
+varDef: T_ID (T_L_BRACKET expr T_R_BRACKET)* (T_ASSIGN initVal)?;
 
 // 目前语句支持return和赋值语句
 stmt:
@@ -96,6 +96,9 @@ lOrExp: lAndExp (lOrOp lAndExp)*;
 // 逻辑或运算符
 lOrOp: T_OR;
 
+// 变量初值
+initVal: expr | T_L_BRACE initVal (T_COMMA initVal)* T_R_BRACE;
+
 // if语句
 ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt (T_ELSE stmt)?;
 
@@ -124,7 +127,7 @@ primaryExp: T_L_PAREN expr T_R_PAREN | T_DIGIT | lVal;
 realParamList: expr (T_COMMA expr)*;
 
 // 左值表达式
-lVal: T_ID;
+lVal: T_ID (T_L_BRACKET expr T_R_BRACKET)*;
 
 // 用正规式来进行词法规则的描述
 
@@ -133,6 +136,8 @@ T_R_PAREN: ')';
 T_SEMICOLON: ';';
 T_L_BRACE: '{';
 T_R_BRACE: '}';
+T_L_BRACKET: '[';
+T_R_BRACKET: ']';
 
 T_ASSIGN: '=';
 T_COMMA: ',';
