@@ -142,7 +142,10 @@ enum class ast_operator_type : int {
     /// @brief 数组赋初值
     AST_OP_ARRAY_INIT,
 
-    /// @brief 数组索引
+    /// @brief 数组维度，用于数组的定义中
+    AST_OP_ARRAY_DIM,
+
+    /// @brief 数组索引，用于数组的下标变量的访问
     AST_OP_ARRAY_INDEX,
 
     /// @brief 最大标识符，表示非法运算符

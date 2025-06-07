@@ -37,6 +37,8 @@ string getNodeName(ast_node * astnode)
     switch (astnode->node_type) {
         case ast_operator_type::AST_OP_LEAF_LITERAL_UINT:
             nodeName = to_string((int32_t) astnode->integer_val);
+            if (astnode->parent->node_type == ast_operator_type::AST_OP_ARRAY_INDEX)
+                nodeName = "[" + to_string((int32_t) astnode->integer_val) + "]";
             break;
         case ast_operator_type::AST_OP_LEAF_LITERAL_FLOAT:
             nodeName = to_string(astnode->float_val);
@@ -136,6 +138,9 @@ string getNodeName(ast_node * astnode)
             nodeName = "continue";
             break;
         case ast_operator_type::AST_OP_ARRAY_INDEX:
+            nodeName = "array";
+            break;
+		case ast_operator_type::AST_OP_ARRAY_DIM:
             nodeName = "[ ]";
             break;
         case ast_operator_type::AST_OP_ARRAY_INIT:

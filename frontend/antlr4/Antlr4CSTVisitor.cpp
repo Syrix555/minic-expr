@@ -27,6 +27,13 @@
 
 #define Instanceof(res, type, var) auto res = dynamic_cast<type>(var)
 
+/// @brief 用于从 visitVarDef 向 visitVarDecl 传递变量定义信息的辅助结构体
+struct VarDefInfo {
+	ast_node * id_node;                     // id节点，原visitVarDef返回值
+    std::vector<ast_node*> dim_nodes;   // 维度表达式节点列表
+    ast_node* init_node = nullptr;      // 初始化值节点
+};
+
 /// @brief 构造函数
 MiniCCSTVisitor::MiniCCSTVisitor()
 {}
@@ -156,15 +163,17 @@ std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
     ast_node * type_node = create_type_node(typeAttr);
     ast_node * id_node = ast_node::New(varId, lineNo);
 
+    ast_node * param_node = ast_node::New(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, type_node, id_node, nullptr);
+
 	for (auto indexCtx: ctx->expr()) {
-        ast_node * index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX);
+        ast_node * dim_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM);
         ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
 
-        (void) index_node->insert_son_node(expr_node);
-        (void) id_node->insert_son_node(index_node);
+        (void) dim_node->insert_son_node(expr_node);
+        (void) param_node->insert_son_node(dim_node);
 	}
 
-    return ast_node::New(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, type_node, id_node, nullptr);
+    return param_node;
 }
 
 /// @brief 非终结运算符block的遍历
@@ -831,24 +840,26 @@ std::any MiniCCSTVisitor::visitPrimaryExp(MiniCParser::PrimaryExpContext * ctx)
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitLVal(MiniCParser::LValContext * ctx)
 {
-    // 识别文法产生式：lVal: T_ID;
+    // 识别文法产生式：lVal: T_ID (T_L_BRACKET expr T_R_BRACKET)*;
     // 获取ID的名字
     auto varId = ctx->T_ID()->getText();
 
     // 获取行号
     int64_t lineNo = (int64_t) ctx->T_ID()->getSymbol()->getLine();
 
-    ast_node * id_node = ast_node::New(varId, lineNo);
+    ast_node * base_node = ast_node::New(varId, lineNo);
 
+    // 向上生长变量引用树
     for (auto indexCtx: ctx->expr()) {
-        ast_node * index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX);
         ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
 
-        (void) index_node->insert_son_node(expr_node);
-        (void) id_node->insert_son_node(index_node);
+        ast_node * new_index_node =
+            create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX, base_node, expr_node, nullptr);
+
+        base_node = new_index_node;
 	}
 
-    return id_node;
+    return base_node;
 }
 
 /// @brief 非终结符VarDecl的分析
@@ -864,19 +875,27 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
     type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
 
     for (auto & varCtx: ctx->varDef()) {
+
+        VarDefInfo info = std::any_cast<VarDefInfo>(visitVarDef(varCtx));
+
         // 变量名节点
-        ast_node * id_node = std::any_cast<ast_node *>(visitVarDef(varCtx));
+        ast_node * id_node = info.id_node;
 
         // 创建类型节点
         ast_node * type_node = create_type_node(typeAttr);
 
-		ast_node * expr_node = nullptr;
-        if (varCtx->T_ASSIGN()) {
-            expr_node = std::any_cast<ast_node *>(visitInitVal(varCtx->initVal()));
-		}
-
         // 创建变量定义节点
-        ast_node * decl_node = ast_node::New(ast_operator_type::AST_OP_VAR_DECL, type_node, id_node, expr_node, nullptr);
+        ast_node * decl_node = ast_node::New(ast_operator_type::AST_OP_VAR_DECL, type_node, id_node, nullptr);
+
+        // 插入数组维度
+        for (auto dim_node: info.dim_nodes) {
+            (void) decl_node->insert_son_node(dim_node);
+        }
+
+        // 插入初值
+        if (info.init_node != nullptr) {
+            (void) decl_node->insert_son_node(info.init_node);
+		}
 
         // 插入到变量声明语句
         (void) stmt_node->insert_son_node(decl_node);
@@ -890,24 +909,29 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
 std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
 {
     // varDef: T_ID (T_L_BRACKET expr T_R_BRACKET)* (T_ASSIGN initVal)?;
-    // 赋值操作不在这里处理
+    //! 这里修改方法，返回结构体，保存相关信息
+
+    VarDefInfo info;
 
     auto varId = ctx->T_ID()->getText();
 
     // 获取行号
     int64_t lineNo = (int64_t) ctx->T_ID()->getSymbol()->getLine();
 
-    ast_node * def_node = ast_node::New(varId, lineNo);
+    info.id_node = ast_node::New(varId, lineNo);
 
     for (auto indexCtx: ctx->expr()) {
-        ast_node * index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX);
+        ast_node * index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM);
         ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
 
         (void) index_node->insert_son_node(expr_node);
-        (void) def_node->insert_son_node(index_node);
+        info.dim_nodes.push_back(index_node);
 	}
 
-    return def_node;
+    if (ctx->T_ASSIGN()) {
+        info.init_node = std::any_cast<ast_node *>(visitInitVal(ctx->initVal()));
+	}
+    return info;
 }
 
 /// @brief 非终结符BasicType的分析

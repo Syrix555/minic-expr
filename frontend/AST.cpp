@@ -97,11 +97,6 @@ bool ast_node::isLeafNode()
         case ast_operator_type::AST_OP_LEAF_TYPE:
             is_leaf = true;
             break;
-        case ast_operator_type::AST_OP_LEAF_VAR_ID:
-            if (this->sons.empty())
-                is_leaf = true;
-            else is_leaf = false;
-            break;
         default:
             is_leaf = false;
             break;
