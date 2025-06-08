@@ -173,6 +173,13 @@ public:
     /// @return 字符串
     [[nodiscard]] virtual std::string toString() const = 0;
 
+    /// @brief 获取类型维度后缀字符串
+    /// @return 字符串
+    [[nodiscard]] virtual std::string getDimString() const
+    {
+        return "";
+	}
+
 protected:
     ///
     /// @brief 标识类型的ID
