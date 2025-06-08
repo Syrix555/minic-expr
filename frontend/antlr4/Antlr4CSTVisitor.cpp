@@ -18,12 +18,17 @@
 #include <any>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include "Antlr4CSTVisitor.h"
 #include "AST.h"
+#include "ArrayType.h"
 #include "AttrType.h"
 #include "MiniCParser.h"
+#include "PointerType.h"
+#include "Type.h"
 
 #define Instanceof(res, type, var) auto res = dynamic_cast<type>(var)
 
@@ -165,13 +170,31 @@ std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
 
     ast_node * param_node = ast_node::New(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, type_node, id_node, nullptr);
 
+    std::vector<ast_node *>dim_nodes;
 	for (auto indexCtx: ctx->expr()) {
-        ast_node * dim_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM);
-        ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
+		ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
+        ast_node * dim_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM, expr_node);
 
-        (void) dim_node->insert_son_node(expr_node);
+        dim_nodes.push_back(dim_node);
         (void) param_node->insert_son_node(dim_node);
-	}
+    }
+
+    const Type * baseType = type_node->type;
+    const Type * completeType = baseType;
+
+    if (!dim_nodes.empty()) {
+        for (auto it = dim_nodes.rbegin(); it != dim_nodes.rend(); ++it) {
+            ast_node * dim_node = *it;
+            std::optional<uint64_t> size_opt =
+                calculate_const_dim_size(dim_node->sons.empty() ? nullptr : dim_node->sons[0]);
+
+            uint64_t numElements = size_opt.value_or(0);
+            completeType = ArrayType::get(const_cast<Type *>(completeType), numElements);
+        }
+        completeType = PointerType::get(const_cast<Type *>(completeType));
+    }
+
+    param_node->type = const_cast<Type *>(completeType);
 
     return param_node;
 }
@@ -874,6 +897,9 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
     // 类型节点
     type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
 
+	// 创建类型节点
+	ast_node * type_node = create_type_node(typeAttr);
+
     for (auto & varCtx: ctx->varDef()) {
 
         VarDefInfo info = std::any_cast<VarDefInfo>(visitVarDef(varCtx));
@@ -881,11 +907,28 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
         // 变量名节点
         ast_node * id_node = info.id_node;
 
-        // 创建类型节点
-        ast_node * type_node = create_type_node(typeAttr);
+        Type * baseType = type_node->type;
+        const Type * completeType = baseType;
+
+        if (!info.dim_nodes.empty()) {
+            for (auto it = info.dim_nodes.rbegin(); it != info.dim_nodes.rend(); ++it) {
+                ast_node * dim_node = *it;
+                std::optional<uint64_t> size_opt = calculate_const_dim_size(dim_node->sons[0]);
+
+                if (size_opt) {
+                    uint64_t numElements = *size_opt;
+                    if (numElements) {
+                        completeType = ArrayType::get(const_cast<Type *>(completeType), numElements);
+					}
+				}
+			}
+        }
 
         // 创建变量定义节点
-        ast_node * decl_node = ast_node::New(ast_operator_type::AST_OP_VAR_DECL, type_node, id_node, nullptr);
+        ast_node * decl_node = create_contain_node(ast_operator_type::AST_OP_VAR_DECL);
+        decl_node->type = const_cast<Type *>(completeType);
+        (void) decl_node->insert_son_node(type_node);
+        (void) decl_node->insert_son_node(id_node);
 
         // 插入数组维度
         for (auto dim_node: info.dim_nodes) {
@@ -981,5 +1024,67 @@ std::any MiniCCSTVisitor::visitExpressionStatement(MiniCParser::ExpressionStatem
 
         // 直接返回空指针，需要再把语句加入到语句块时要注意判断，空语句不要加入
         return nullptr;
+    }
+}
+
+std::optional<uint64_t> MiniCCSTVisitor::calculate_const_dim_size(ast_node * node)
+{
+    // 基本情况：如果节点为空，则无法计算
+    if (!node) {
+        return std::nullopt;
+    }
+
+    // 根据节点类型进行分情况处理
+    switch (node->node_type) {
+        // 递归的成功基石：节点本身就是一个无符号整数字面量
+        case ast_operator_type::AST_OP_LEAF_LITERAL_UINT: {
+            return node->integer_val;
+        }
+
+        // 递归步骤：对于二元运算符，先递归计算左右子树，再合并结果
+        case ast_operator_type::AST_OP_ADD:
+        case ast_operator_type::AST_OP_SUB:
+        case ast_operator_type::AST_OP_MUL:
+        case ast_operator_type::AST_OP_DIV:
+        case ast_operator_type::AST_OP_MOD: {
+            // 确保有两个子节点
+            if (node->sons.size() != 2) {
+                return std::nullopt;
+            }
+
+            // 递归计算左、右子节点
+            auto left_opt = calculate_const_dim_size(node->sons[0]);
+            auto right_opt = calculate_const_dim_size(node->sons[1]);
+
+            // 只有当左右子节点都成功计算出常量值时，才继续
+            if (left_opt && right_opt) {
+                uint64_t left_val = *left_opt;  // 从optional中取出值
+                uint64_t right_val = *right_opt;
+
+                // 根据具体运算符进行计算
+                switch (node->node_type) {
+                    case ast_operator_type::AST_OP_ADD: return left_val + right_val;
+                    case ast_operator_type::AST_OP_SUB: return left_val - right_val;
+                    case ast_operator_type::AST_OP_MUL: return left_val * right_val;
+                    case ast_operator_type::AST_OP_DIV:
+                        if (right_val == 0) return std::nullopt; // 错误：除以0
+                        return left_val / right_val;
+                    case ast_operator_type::AST_OP_MOD:
+                         if (right_val == 0) return std::nullopt; // 错误：对0取模
+                        return left_val % right_val;
+                    default: return std::nullopt; // 不应到达这里
+                }
+            } else {
+                // 如果任一子节点不是常量，则整个表达式都不是常量
+                return std::nullopt;
+            }
+        }
+
+        // 失败情况：如果节点是变量、函数调用等其他任何类型，都认为它不是编译时常量
+        // case ast_operator_type::AST_OP_LEAF_VAR_ID:
+        // case ast_operator_type::AST_OP_FUNC_CALL:
+        default: {
+            return std::nullopt;
+        }
     }
 }

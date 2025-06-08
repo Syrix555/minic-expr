@@ -16,6 +16,7 @@
 ///
 #pragma once
 
+#include <optional>
 #include "AST.h"
 #include "MiniCBaseVisitor.h"
 #include "MiniCParser.h"
@@ -324,4 +325,12 @@ protected:
     /// @return std::any AST的节点
     ///
     std::any visitRealParamList(MiniCParser::RealParamListContext * ctx) override;
+
+private:
+    ///
+    /// @brief 辅助方法，计算数组维度
+    /// @param node ast节点
+    /// @return std::optional<uint64_t>
+    ///
+    std::optional<uint64_t> calculate_const_dim_size(ast_node * node);
 };

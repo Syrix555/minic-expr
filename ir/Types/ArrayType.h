@@ -55,6 +55,27 @@ class ArrayType final : public Type {
 
 public:
     ///
+    /// @brief ArrayType的构造函数（必须公共）
+    /// @param _elementType 数组元素的类型
+    /// @param _numElements 数组元素的数量
+    ///
+    ArrayType(Type* _elementType, uint64_t _numElements)
+        : Type(Type::ArrayTyID),
+          elementType(_elementType),
+          numElements(_numElements) {
+
+        // 模仿 PointerType 的逻辑来计算 rootType 和 depth
+        if (elementType->isArrayType()) {
+            Instanceof(elementAsArrayType, const ArrayType*, elementType);
+            this->rootType = elementAsArrayType->getRootType();
+            this->depth = elementAsArrayType->getDepth() + 1;
+        } else {
+            this->rootType = this->elementType;
+            this->depth = 1;
+        }
+    }
+
+    ///
     /// @brief 获取（或创建）一个唯一的数组类型实例
     /// @param elementType 数组元素的类型
     /// @param numElements 数组元素的数量
@@ -74,7 +95,7 @@ public:
     {
         return elementType;
     }
-    
+
     ///
     /// @brief 获取数组的元素数量
     /// @return uint64_t
@@ -129,27 +150,6 @@ public:
     }
 
 private:
-    ///
-    /// @brief ArrayType的私有构造函数，只能被StorageSet调用
-    /// @param _elementType 数组元素的类型
-    /// @param _numElements 数组元素的数量
-    ///
-    ArrayType(const Type* _elementType, uint64_t _numElements)
-        : Type(Type::ArrayTyID),
-          elementType(_elementType),
-          numElements(_numElements) {
-
-        // 模仿 PointerType 的逻辑来计算 rootType 和 depth
-        if (elementType->isArrayType()) {
-            Instanceof(elementAsArrayType, const ArrayType*, elementType);
-            this->rootType = elementAsArrayType->getRootType();
-            this->depth = elementAsArrayType->getDepth() + 1;
-        } else {
-            this->rootType = this->elementType;
-            this->depth = 1;
-        }
-    }
-
     ///
     /// @brief 数组的直接元素类型
     /// 例如：数组类型 [10 x [20 x i32]] 的元素类型是 [20 x i32]
