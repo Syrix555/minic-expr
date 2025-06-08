@@ -185,10 +185,10 @@ std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
     if (!dim_nodes.empty()) {
         for (auto it = dim_nodes.rbegin(); it != dim_nodes.rend(); ++it) {
             ast_node * dim_node = *it;
-            std::optional<uint64_t> size_opt =
+            std::optional<uint32_t> size_opt =
                 calculate_const_dim_size(dim_node->sons.empty() ? nullptr : dim_node->sons[0]);
 
-            uint64_t numElements = size_opt.value_or(0);
+            uint32_t numElements = size_opt.value_or(0);
             completeType = ArrayType::get(const_cast<Type *>(completeType), numElements);
         }
         completeType = PointerType::get(const_cast<Type *>(completeType));
@@ -913,13 +913,18 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
         if (!info.dim_nodes.empty()) {
             for (auto it = info.dim_nodes.rbegin(); it != info.dim_nodes.rend(); ++it) {
                 ast_node * dim_node = *it;
-                std::optional<uint64_t> size_opt = calculate_const_dim_size(dim_node->sons[0]);
+                ast_node * expr_node = dim_node->sons[0];
+                std::optional<uint32_t> size_opt = calculate_const_dim_size(expr_node);
 
                 if (size_opt) {
-                    uint64_t numElements = *size_opt;
+                    uint32_t numElements = *size_opt;
                     if (numElements) {
                         completeType = ArrayType::get(const_cast<Type *>(completeType), numElements);
-					}
+                    }
+					//? 优化：常量折叠
+                    ast_node * literal_node = ast_node::New(digit_int_attr{numElements, id_node->line_no});
+                    dim_node->sons[0] = literal_node;
+                    ast_node::Delete(expr_node);
 				}
 			}
         }
@@ -1027,7 +1032,7 @@ std::any MiniCCSTVisitor::visitExpressionStatement(MiniCParser::ExpressionStatem
     }
 }
 
-std::optional<uint64_t> MiniCCSTVisitor::calculate_const_dim_size(ast_node * node)
+std::optional<uint32_t> MiniCCSTVisitor::calculate_const_dim_size(ast_node * node)
 {
     // 基本情况：如果节点为空，则无法计算
     if (!node) {
@@ -1058,8 +1063,8 @@ std::optional<uint64_t> MiniCCSTVisitor::calculate_const_dim_size(ast_node * nod
 
             // 只有当左右子节点都成功计算出常量值时，才继续
             if (left_opt && right_opt) {
-                uint64_t left_val = *left_opt;  // 从optional中取出值
-                uint64_t right_val = *right_opt;
+                uint32_t left_val = *left_opt;  // 从optional中取出值
+                uint32_t right_val = *right_opt;
 
                 // 根据具体运算符进行计算
                 switch (node->node_type) {

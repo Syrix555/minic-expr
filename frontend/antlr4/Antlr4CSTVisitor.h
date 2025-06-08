@@ -332,5 +332,5 @@ private:
     /// @param node ast节点
     /// @return std::optional<uint64_t>
     ///
-    std::optional<uint64_t> calculate_const_dim_size(ast_node * node);
+    std::optional<uint32_t> calculate_const_dim_size(ast_node * node);
 };
