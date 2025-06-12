@@ -159,7 +159,7 @@ std::any MiniCCSTVisitor::visitFuncFParams(MiniCParser::FuncFParamsContext * ctx
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
 {
-	// 识别的文法产生式：funcFParam: basicType T_ID (T_L_BRACKET expr T_R_BRACKET)*;
+	// 识别的文法产生式：funcFParam: basicType T_ID (T_L_BRACKET expr? T_R_BRACKET (T_L_BRACKET expr T_R_BRACKET)*)?;
 
     type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
     auto varId = ctx->T_ID()->getText();
@@ -170,28 +170,36 @@ std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
 
     ast_node * param_node = ast_node::New(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, type_node, id_node, nullptr);
 
-    std::vector<ast_node *>dim_nodes;
-	for (auto indexCtx: ctx->expr()) {
-		ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
-        ast_node * dim_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM, expr_node);
-
-        dim_nodes.push_back(dim_node);
-        (void) param_node->insert_son_node(dim_node);
-    }
-
     const Type * baseType = type_node->type;
     const Type * completeType = baseType;
 
-    if (!dim_nodes.empty()) {
-        for (auto it = dim_nodes.rbegin(); it != dim_nodes.rend(); ++it) {
-            ast_node * dim_node = *it;
-            std::optional<uint32_t> size_opt =
-                calculate_const_dim_size(dim_node->sons.empty() ? nullptr : dim_node->sons[0]);
+    if (ctx->T_L_BRACKET(0)) {
+		ast_node * expr_node = nullptr;
+		if (ctx->dim1) {
+			expr_node = std::any_cast<ast_node *>(visitExpr(ctx->dim1));
+		}
+		ast_node * dim_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM, expr_node);
 
-            uint32_t numElements = size_opt.value_or(0);
-            completeType = ArrayType::get(const_cast<Type *>(completeType), numElements);
-        }
-        completeType = PointerType::get(const_cast<Type *>(completeType));
+		(void) param_node->insert_son_node(dim_node);
+
+        std::vector<ast_node *> dim_nodes;
+        for (auto dimCtx: ctx->dims) {
+			ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(dimCtx));
+			ast_node * dim_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM, expr_node);
+
+            dim_nodes.push_back(dim_node);
+			(void) param_node->insert_son_node(dim_node);
+		}
+
+		for (auto it = dim_nodes.rbegin(); it != dim_nodes.rend(); ++it) {
+			ast_node * dim_node = *it;
+			std::optional<uint32_t> size_opt =
+				calculate_const_dim_size(dim_node->sons.empty() ? nullptr : dim_node->sons[0]);
+
+			uint32_t numElements = size_opt.value_or(0);
+			completeType = ArrayType::get(const_cast<Type *>(completeType), numElements);
+		}
+		completeType = PointerType::get(const_cast<Type *>(completeType));
     }
 
     param_node->type = const_cast<Type *>(completeType);

@@ -22,8 +22,8 @@ funcType: T_INT | T_VOID;
 // 函数形参表定义：
 funcFParams: funcFParam (T_COMMA funcFParam)*;
 
-// 函数形参定义
-funcFParam: basicType T_ID (T_L_BRACKET expr T_R_BRACKET)*;
+// 函数形参定义，给expr加上标签更好处理
+funcFParam: basicType T_ID (T_L_BRACKET dim1=expr? T_R_BRACKET (T_L_BRACKET dims+=expr T_R_BRACKET)*)?;
 
 // 语句块看用作函数体，这里允许多个语句，并且不含任何语句
 block: T_L_BRACE blockItemList? T_R_BRACE;

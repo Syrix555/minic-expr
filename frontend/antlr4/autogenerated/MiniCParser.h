@@ -154,16 +154,19 @@ public:
 
   class  FuncFParamContext : public antlr4::ParserRuleContext {
   public:
+    MiniCParser::ExprContext *dim1 = nullptr;
+    MiniCParser::ExprContext *exprContext = nullptr;
+    std::vector<ExprContext *> dims;
     FuncFParamContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     BasicTypeContext *basicType();
     antlr4::tree::TerminalNode *T_ID();
     std::vector<antlr4::tree::TerminalNode *> T_L_BRACKET();
     antlr4::tree::TerminalNode* T_L_BRACKET(size_t i);
-    std::vector<ExprContext *> expr();
-    ExprContext* expr(size_t i);
     std::vector<antlr4::tree::TerminalNode *> T_R_BRACKET();
     antlr4::tree::TerminalNode* T_R_BRACKET(size_t i);
+    std::vector<ExprContext *> expr();
+    ExprContext* expr(size_t i);
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
