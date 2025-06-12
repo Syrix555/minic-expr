@@ -173,8 +173,10 @@ std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
     const Type * baseType = type_node->type;
     const Type * completeType = baseType;
 
+    // 是数组就进入
     if (ctx->T_L_BRACKET(0)) {
-		ast_node * dim1_node = ast_node::New(digit_int_attr{0, lineNo});;
+		// 第一维元素数默认为0
+        ast_node * dim1_node = ast_node::New(digit_int_attr{0, lineNo});;
 		ast_node * dim_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM, dim1_node);
 
 		(void) param_node->insert_son_node(dim_node);

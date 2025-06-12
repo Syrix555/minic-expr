@@ -310,7 +310,7 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
     auto currentFunc = module->getCurrentFunction();
     for (auto son: node->sons) {
 		// 获取形参类型
-        Type * param_type = son->sons[0]->type;
+        Type * param_type = son->type;
         // 创建函数形参
         FormalParam * param = new FormalParam(param_type, "");
         // 保存到函数的形参列表中
