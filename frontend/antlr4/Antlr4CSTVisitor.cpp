@@ -174,11 +174,8 @@ std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
     const Type * completeType = baseType;
 
     if (ctx->T_L_BRACKET(0)) {
-		ast_node * expr_node = nullptr;
-		if (ctx->dim1) {
-			expr_node = std::any_cast<ast_node *>(visitExpr(ctx->dim1));
-		}
-		ast_node * dim_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM, expr_node);
+		ast_node * dim1_node = ast_node::New(digit_int_attr{0, lineNo});;
+		ast_node * dim_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIM, dim1_node);
 
 		(void) param_node->insert_son_node(dim_node);
 
@@ -198,7 +195,11 @@ std::any MiniCCSTVisitor::visitFuncFParam(MiniCParser::FuncFParamContext * ctx)
 
 			uint32_t numElements = size_opt.value_or(0);
 			completeType = ArrayType::get(const_cast<Type *>(completeType), numElements);
-		}
+        }
+
+		// 第一维退化处理
+        completeType = ArrayType::get(const_cast<Type *>(completeType), 0);
+
 		completeType = PointerType::get(const_cast<Type *>(completeType));
     }
 
