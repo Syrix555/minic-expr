@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include "AST.h"
+#include "ArrayType.h"
 #include "BranchInstruction.h"
 #include "Common.h"
 #include "ConstInt.h"
@@ -33,18 +34,23 @@
 #include "IRGenerator.h"
 #include "Instruction.h"
 #include "IntegerType.h"
+#include "LoadInstruction.h"
 #include "LocalVariable.h"
 #include "Module.h"
 #include "EntryInstruction.h"
 #include "LabelInstruction.h"
 #include "ExitInstruction.h"
 #include "FuncCallInstruction.h"
+#include "PointerType.h"
+#include "StoreInstruction.h"
 #include "Type.h"
 #include "UnaryInstruction.h"
 #include "BinaryInstruction.h"
 #include "MoveInstruction.h"
 #include "GotoInstruction.h"
 #include "Value.h"
+
+#define Instanceof(res, type, var) auto res = dynamic_cast<type>(var)
 
 /// @brief 构造函数
 /// @param _root AST的根
@@ -83,6 +89,10 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_WHILE] = &IRGenerator::ir_while;
     ast2ir_handlers[ast_operator_type::AST_OP_BREAK] = &IRGenerator::ir_break;
     ast2ir_handlers[ast_operator_type::AST_OP_CONTINUE] = &IRGenerator::ir_continue;
+
+    /* 数组相关 */
+    ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_INIT] = &IRGenerator::ir_array_init;
+    ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_INDEX] = &IRGenerator::ir_array_index;
 
     /* 函数调用 */
     ast2ir_handlers[ast_operator_type::AST_OP_FUNC_CALL] = &IRGenerator::ir_function_call;
@@ -1436,17 +1446,41 @@ bool IRGenerator::ir_assign(ast_node * node)
         return false;
     }
 
-    // 这里只处理整型的数据，如需支持实数，则需要针对类型进行处理
-
-    MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), left->val, right->val);
-
-    // 创建临时变量保存IR的值，以及线性IR指令
-    node->blockInsts.addInst(right->blockInsts);
+	node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(movInst);
+
+    Value * res = nullptr;
+    Value * right_val = right->val;
+    // 这里只处理整型的数据，如需支持实数，则需要针对类型进行处理
+    if (right->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
+        LoadInstruction * loadInst = new LoadInstruction(module->getCurrentFunction(),
+                                                         right->val,
+                                                         IntegerType::getTypeInt());
+        node->blockInsts.addInst(loadInst);
+        right_val = loadInst;
+        if (left->node_type != ast_operator_type::AST_OP_ARRAY_INDEX) {
+            MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), left->val, loadInst);
+			// 创建临时变量保存IR的值，以及线性IR指令
+        	node->blockInsts.addInst(movInst);
+        	res = movInst;
+		}
+    } else if (left->node_type != ast_operator_type::AST_OP_ARRAY_INDEX) {
+		MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), left->val, right->val);
+		// 创建临时变量保存IR的值，以及线性IR指令
+        node->blockInsts.addInst(movInst);
+        res = movInst;
+	}
+
+	if (left->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
+        StoreInstruction * storeInst = new StoreInstruction(module->getCurrentFunction(),
+                                                         left->val,
+                                                          right_val);
+        node->blockInsts.addInst(storeInst);
+        res = storeInst;
+	}
 
     // 这里假定赋值的类型是一致的
-    node->val = movInst;
+    node->val = res;
 
     return true;
 }
@@ -1481,10 +1515,21 @@ bool IRGenerator::ir_return(ast_node * node)
         // 创建临时变量保存IR的值，以及线性IR指令
         node->blockInsts.addInst(right->blockInsts);
 
-        // 返回值赋值到函数返回值变量上，然后跳转到函数的尾部
-        node->blockInsts.addInst(new MoveInstruction(currentFunc, currentFunc->getReturnValue(), right->val));
+        if (right->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
+            LoadInstruction * loadInst = new LoadInstruction(module->getCurrentFunction(),
+                                                          right->val,
+                                                             IntegerType::getTypeInt());
+            node->blockInsts.addInst(loadInst);
 
-        node->val = right->val;
+            node->blockInsts.addInst(new MoveInstruction(currentFunc, currentFunc->getReturnValue(), loadInst));
+        	node->val = loadInst;
+        } else {
+            // 返回值赋值到函数返回值变量上，然后跳转到函数的尾部
+        	node->blockInsts.addInst(new MoveInstruction(currentFunc, currentFunc->getReturnValue(), right->val));
+
+        	node->val = right->val;
+		}
+
     } else {
         // 没有返回值
         node->val = nullptr;
@@ -1519,6 +1564,8 @@ bool IRGenerator::ir_leaf_node_var_id(ast_node * node)
     val = module->findVarValue(node->name);
 
     node->val = val;
+
+    node->type = val->getType();
 
     return true;
 }
@@ -1567,18 +1614,139 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 
     // TODO 这里可强化类型等检查
 
-    node->val = module->newVarValue(node->sons[0]->type, node->sons[1]->name);
+    auto varName = node->sons[1]->name;
+    Type * varType = node->type;
 
-    if (node->sons.size() > 2) {
-        ast_node * init = ir_visit_ast_node(node->sons[2]);
-        if (!init) {
-            return false;
-        }
-        MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), node->val, init->val);
+    if (varType->isArrayType()) {
 
-        node->blockInsts.addInst(init->blockInsts);
-        node->blockInsts.addInst(movInst);
+        const Type * pointer_to_array = PointerType::get(varType);
+        node->val = module->newVarValue(const_cast<Type *>(pointer_to_array), varName);
+
+        Instanceof(var2array, ArrayType *, varType);
+        if (node->sons.size() > var2array->getDepth() + 2) {				// size > type + id + dim_nodes.size
+			ast_node * array_init_node = node->sons[var2array->getDepth() + 2];
+            bool res = ir_visit_ast_node(array_init_node);
+            if (!res) {
+                return false;
+			}
+		}
+    } else {
+
+        node->val = module->newVarValue(node->sons[0]->type, node->sons[1]->name);
+
+        if (node->sons.size() > 2) {
+			ast_node * init = ir_visit_ast_node(node->sons[2]);
+			if (!init) {
+				return false;
+			}
+			MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), node->val, init->val);
+
+			node->blockInsts.addInst(init->blockInsts);
+			node->blockInsts.addInst(movInst);
+		}
+	}
+    return true;
+}
+
+/// @brief 数组初始化节点翻译成线性中间IR
+/// @param node AST节点
+bool IRGenerator::ir_array_init(ast_node * node)
+{
+    // TODO: 等待实现
+    return false;
+}
+
+/// @brief 数组索引对应的左值节点翻译成线性中间IR
+/// @param node AST节点
+bool IRGenerator::ir_array_index(ast_node * node)
+{
+    ast_node * base_node = node->sons[0];
+    ast_node * index_node = node->sons[1];
+
+    ast_node * visited_index = ir_visit_ast_node(index_node);
+    node->blockInsts.addInst(visited_index->blockInsts);
+
+    ast_node * visited_base = ir_visit_ast_node(base_node);
+    node->blockInsts.addInst(visited_base->blockInsts);
+
+    // 为本节点保存数组基址
+    if (visited_base->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+        node->base_addr = visited_base->val;
+    } else {
+        node->base_addr = visited_base->base_addr;
 	}
 
+    // 将指针类型解套，取出真正的数据类型
+    auto baseType = base_node->type;
+    const Type * pointeeType = nullptr;
+    if (baseType->isPointerType()) {
+        Instanceof(base2ptr, PointerType *, baseType);
+        pointeeType = base2ptr->getPointeeType();
+    } else if (baseType->isArrayType()) {
+        pointeeType = baseType;
+	}
+
+    const Type * elementType = nullptr;
+    if (pointeeType->isArrayType()) {
+        Instanceof(pointee2array,const ArrayType *, pointeeType);
+        elementType = pointee2array->getElementType();
+	} //TODO: 错误处理
+
+    ConstInt * numElements = nullptr;
+    if (elementType->isArrayType()) {
+        elementType = dynamic_cast<const ArrayType *>(elementType);
+        numElements = module->newConstInt(static_cast<const ArrayType *>(elementType)->getNumElements());
+    } else {
+        numElements = module->newConstInt(elementType->getSize());
+	}
+
+    Value * mulSrc = nullptr;
+    if (node->sons[0]->node_type != ast_operator_type::AST_OP_ARRAY_INDEX) {
+        mulSrc = visited_index->val;
+    } else {
+        mulSrc = visited_base->val;
+	}
+    BinaryInstruction * mulInst = new BinaryInstruction(module->getCurrentFunction(),
+                                                        IRInstOperator::IRINST_OP_MUL_I,
+                                                        mulSrc,
+                                                        numElements,
+                                                        IntegerType::getTypeInt());
+    node->blockInsts.addInst(mulInst);
+
+    Value * addSrc = nullptr;
+    if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX) {
+        addSrc = node->base_addr;
+    } else {
+        addSrc = node->parent->sons[1]->val;
+    }
+
+    Type * addInstType = nullptr;
+    if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX) {
+		addInstType = new PointerType(IntegerType::getTypeInt());
+    } else {
+        addInstType = IntegerType::getTypeInt();
+    }
+
+    BinaryInstruction * addInst = new BinaryInstruction(module->getCurrentFunction(),
+                                                        IRInstOperator::IRINST_OP_ADD_I,
+                                                        mulInst,
+                                                        addSrc,
+                                                        addInstType);
+    node->blockInsts.addInst(addInst);
+
+    node->type = const_cast<Type *>(elementType);
+
+    if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX &&
+        node->parent->node_type != ast_operator_type::AST_OP_ASSIGN &&
+        node->parent->node_type != ast_operator_type::AST_OP_RETURN) {
+        LoadInstruction * loadInst = new LoadInstruction(module->getCurrentFunction(),
+                                                         addInst,
+                                                         IntegerType::getTypeInt());
+		node->blockInsts.addInst(loadInst);
+        node->val = loadInst;
+    } else {
+        node->val = addInst;
+    }
+    
     return true;
 }

@@ -18,7 +18,9 @@
 #include <cstdlib>
 #include <string>
 
+#include "ArrayType.h"
 #include "IRConstant.h"
+#include "PointerType.h"
 #include "Function.h"
 
 /// @brief 指定函数名字、函数类型的构造函数
@@ -104,8 +106,17 @@ void Function::toString(std::string & str)
     // 输出局部变量的名字与IR名字
     for (auto & var: this->varsVector) {
 
-        // 局部变量和临时变量需要输出declare语句
-        str += "\tdeclare " + var->getType()->toString() + " " + var->getIRName();
+        auto varType = var->type;
+        std::string dimStr = "";
+        if (varType->isPointerType()) {
+            Instanceof(ptrType, PointerType *, varType);
+            auto allocatedType = ptrType->getPointeeType();
+            dimStr = allocatedType->getDimString();
+            str += "\tdeclare " + allocatedType->toString() + " " + var->getIRName() + dimStr;
+        } else {
+            // 局部变量和临时变量需要输出declare语句
+			str += "\tdeclare " + var->getType()->toString() + " " + var->getIRName() + dimStr;
+		}
 
         std::string extraStr;
         std::string realName = var->getName();

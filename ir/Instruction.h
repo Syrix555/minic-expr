@@ -84,6 +84,12 @@ enum class IRInstOperator : std::int8_t {
     /// @brief 分支跳转指令
     IRINST_OP_BRANCH,
 
+    /// @brief load指令
+    IRINST_OP_LOAD,
+
+    /// @brief store指令
+    IRINST_OP_STORE,
+
     /// @brief 最大指令码，也是无效指令
     IRINST_OP_MAX
 };

@@ -37,7 +37,7 @@ string getNodeName(ast_node * astnode)
     switch (astnode->node_type) {
         case ast_operator_type::AST_OP_LEAF_LITERAL_UINT:
             nodeName = to_string((int32_t) astnode->integer_val);
-            if (astnode->parent->node_type == ast_operator_type::AST_OP_ARRAY_INDEX)
+            if (astnode->parent != nullptr && astnode->parent->node_type == ast_operator_type::AST_OP_ARRAY_INDEX)
                 nodeName = "[" + to_string((int32_t) astnode->integer_val) + "]";
             break;
         case ast_operator_type::AST_OP_LEAF_LITERAL_FLOAT:

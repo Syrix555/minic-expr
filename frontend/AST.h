@@ -196,6 +196,9 @@ public:
     /// @brief 结束出口标签，用于继承上个节点生成的标签
     LabelInstruction * endLabel;
 
+    /// @brief 数组类型变量基址保存
+    Value * base_addr = nullptr;
+
     ///
     /// @brief 在进入block等节点时是否要进行作用域管理。默认要做。
     ///

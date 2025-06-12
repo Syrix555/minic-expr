@@ -18,6 +18,8 @@
 
 #include "GlobalValue.h"
 #include "IRConstant.h"
+#include "PointerType.h"
+#include "ArrayType.h"
 
 ///
 /// @brief 全局变量，寻址时通过符号名或变量名来寻址
@@ -89,7 +91,17 @@ public:
     ///
     void toDeclareString(std::string & str)
     {
-        str = "declare " + getType()->toString() + " " + getIRName();
+        auto varType = this->type;
+        std::string dimStr = "";
+        if (varType->isPointerType()) {
+            Instanceof(ptrType, PointerType *, varType);
+            auto allocatedType = ptrType->getPointeeType();
+            dimStr = allocatedType->getDimString();
+            str += "declare " + allocatedType->toString() + " " + getIRName() + dimStr;
+        } else {
+            str = "declare " + getType()->toString() + " " + getIRName();
+		}
+
     }
 
 private:

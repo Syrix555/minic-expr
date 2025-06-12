@@ -897,15 +897,14 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
     // 类型节点
     type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
 
-	// 创建类型节点
-	ast_node * type_node = create_type_node(typeAttr);
-
     for (auto & varCtx: ctx->varDef()) {
 
         VarDefInfo info = std::any_cast<VarDefInfo>(visitVarDef(varCtx));
 
         // 变量名节点
         ast_node * id_node = info.id_node;
+        // 创建类型节点   			//! 怎么能放循环外面，这就成共享节点了
+		ast_node * type_node = create_type_node(typeAttr);
 
         Type * baseType = type_node->type;
         const Type * completeType = baseType;
