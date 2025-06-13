@@ -366,8 +366,16 @@ bool IRGenerator::ir_function_call(ast_node * node)
             currentFunc->setMaxFuncCallArgCnt(argsCount);
         }
 
+		// TODO 这里请追加函数调用的语义错误检查，这里只进行了函数参数的个数检查等，其它请自行追加。
+		if (paramsNode->sons.size() != calledFunction->getParams().size()) {
+			// 函数参数的个数不一致，语义错误
+			minic_log(LOG_ERROR, "第%lld行的被调用函数(%s)未定义或声明", (long long) lineno, funcName.c_str());
+			return false;
+		}
+
         // 遍历参数列表，孩子是表达式
         // 这里自左往右计算表达式
+        auto it_paramsNode = calledFunction->getParams().begin();
         for (auto son: paramsNode->sons) {
 
             // 遍历Block的每个语句，进行显示或者运算
@@ -376,16 +384,21 @@ bool IRGenerator::ir_function_call(ast_node * node)
                 return false;
             }
 
-            realParams.push_back(temp->val);
             node->blockInsts.addInst(temp->blockInsts);
-        }
-    }
 
-    // TODO 这里请追加函数调用的语义错误检查，这里只进行了函数参数的个数检查等，其它请自行追加。
-    if (realParams.size() != calledFunction->getParams().size()) {
-        // 函数参数的个数不一致，语义错误
-        minic_log(LOG_ERROR, "第%lld行的被调用函数(%s)未定义或声明", (long long) lineno, funcName.c_str());
-        return false;
+            auto formal_param = *it_paramsNode;
+            if (formal_param->getType()->isIntegerType() && temp->val->getType()->isPointerType()) {
+                LoadInstruction * loadInst = new LoadInstruction(module->getCurrentFunction(),
+                                                         		 temp->val,
+                                                         		 IntegerType::getTypeInt());
+        		node->blockInsts.addInst(loadInst);
+        		temp->val = loadInst;
+            }
+
+            realParams.push_back(temp->val);
+
+            ++it_paramsNode;
+        }
     }
 
     // 返回调用有返回值，则需要分配临时变量，用于保存函数调用的返回值
@@ -1757,14 +1770,15 @@ bool IRGenerator::ir_array_index(ast_node * node)
     node->type = const_cast<Type *>(elementType);
 
     if ((node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX &&
-        node->parent->node_type != ast_operator_type::AST_OP_ASSIGN &&
-        node->parent->node_type != ast_operator_type::AST_OP_RETURN) ||
+         node->parent->node_type != ast_operator_type::AST_OP_ASSIGN &&
+         node->parent->node_type != ast_operator_type::AST_OP_RETURN &&
+         node->parent->node_type != ast_operator_type::AST_OP_FUNC_REAL_PARAMS) ||
         (node->parent->node_type == ast_operator_type::AST_OP_ARRAY_INDEX && node->currentDepth == node->arrayDepth)) {
         LoadInstruction * loadInst = new LoadInstruction(module->getCurrentFunction(),
                                                          addInst,
                                                          IntegerType::getTypeInt());
         node->blockInsts.addInst(loadInst);
-        node->currentDepth = node->arrayDepth = -1;
+        node->currentDepth = node->arrayDepth = -1;					// 好像不是特别重要
         node->val = loadInst;
     } else {
         node->val = addInst;

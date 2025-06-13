@@ -14,6 +14,7 @@
 /// </table>
 ///
 
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <string>
@@ -94,7 +95,17 @@ void Function::toString(std::string & str)
             str += ", ";
         }
 
-        std::string param_str = param->getType()->toString() + " " + param->getIRName();
+        std::string param_str = "";
+        auto paramType = param->getType();
+
+        if (paramType->isPointerType()) {
+            Instanceof(ptrType, PointerType *, paramType);
+            auto allocatedType = ptrType->getPointeeType();
+            std::string dimstr = allocatedType->getDimString();
+			param_str = allocatedType->toString() + " " + param->getIRName() + dimstr;
+        } else {
+            param_str = param->getType()->toString() + " " + param->getIRName();
+		}
 
         str += param_str;
     }
