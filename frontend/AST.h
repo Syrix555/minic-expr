@@ -199,6 +199,12 @@ public:
     /// @brief 数组类型变量基址保存
     Value * base_addr = nullptr;
 
+    /// @brief 当前数组深度保存
+    uint32_t currentDepth = -1;
+
+    /// @brief 数组的总深度
+    uint32_t arrayDepth = -1;
+
     ///
     /// @brief 在进入block等节点时是否要进行作用域管理。默认要做。
     ///

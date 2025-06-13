@@ -722,12 +722,13 @@ std::any MiniCCSTVisitor::visitInitVal(MiniCParser::InitValContext * ctx)
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitIfStmt(MiniCParser::IfStmtContext * ctx)
 {
-    // 识别文法产生式：ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt (T_ELSE stmt)?
+    // 识别文法产生式：ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt? (T_ELSE stmt)?
 
     // 首先识别cond条件表达式
     ast_node * condNode = std::any_cast<ast_node *>(visitCond(ctx->cond()));
 
     // 然后识别条件为真的语句块
+    // 现在可以正确接受nullptr了
     ast_node * thenNode = std::any_cast<ast_node *>(visitStmt(ctx->stmt(0)));
 
     // 最后识别可选的else语句块
@@ -882,13 +883,30 @@ std::any MiniCCSTVisitor::visitLVal(MiniCParser::LValContext * ctx)
     int64_t lineNo = (int64_t) ctx->T_ID()->getSymbol()->getLine();
 
     ast_node * base_node = ast_node::New(varId, lineNo);
+    ast_node * id_node = base_node;
 
     // 向上生长变量引用树
     for (auto indexCtx: ctx->expr()) {
         ast_node * expr_node = std::any_cast<ast_node *>(visitExpr(indexCtx));
 
-        ast_node * new_index_node =
-            create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX, base_node, expr_node, nullptr);
+        ast_node * new_index_node = nullptr;
+        // 避免index嵌套
+        //! 修改重点
+        // TODO: 类型继承处理
+        // if (base_node->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
+        // 	new_index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX, base_node, expr_node, nullptr);
+        // } else if (base_node->node_type != ast_operator_type::AST_OP_ARRAY_INDEX &&
+        //            expr_node->node_type != ast_operator_type::AST_OP_ARRAY_INDEX){
+        //     new_index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX, id_node, expr_node, nullptr);
+        // } else if (base_node->node_type != ast_operator_type::AST_OP_ARRAY_INDEX &&
+        //            expr_node->node_type == ast_operator_type::AST_OP_ARRAY_INDEX){
+        //     new_index_node = expr_node;
+        // }
+        if (base_node->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
+			new_index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX, base_node, expr_node, nullptr);
+        } else{
+            new_index_node = create_contain_node(ast_operator_type::AST_OP_ARRAY_INDEX, id_node, expr_node, nullptr);
+        }
 
         base_node = new_index_node;
 	}
@@ -1038,7 +1056,8 @@ std::any MiniCCSTVisitor::visitExpressionStatement(MiniCParser::ExpressionStatem
         // 空语句
 
         // 直接返回空指针，需要再把语句加入到语句块时要注意判断，空语句不要加入
-        return nullptr;
+        //! 用ast_node包裹nullptr，避免出现bad_cast
+        return static_cast<ast_node *>(nullptr);
     }
 }
 

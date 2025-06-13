@@ -36,6 +36,38 @@ ArrayType
 	|
 	+---numElements
 
+
+AST_OP_ARRAY_INDEX
+	|
+	+---AST_OP_ARRAY_INDEX
+	|		|
+	|		+---AST_OP_LEAF_VAR_ID
+	|		|
+	|		+---AST_OP_ARRAY_INDEX array
+	|				|
+	|				+---AST_OP_ARRAY_INDEX
+	|				|		|
+	|				|		+---AST_OP_LEAF_VAR_ID
+	|				|		|
+	|				|		+---AST_OP_LEAF_LITERAL_UINT 1
+	|				|
+	|				+---AST_OP_LEAF_LITERAL_UINT 5
+	|
+	+---AST_OP_ARRAY_INDEX
+			|
+			+---AST_OP_LEAF_VAR_ID array
+			|
+			+---AST_OP_ARRAY_INDEX
+					|
+					+---AST_OP_ARRAY_INDEX
+					|		|
+					|		+---AST_OP_LEAF_VAR_ID array
+					|		|
+					|		+---AST_OP_LEAF_LITERAL_UINT 2
+					|
+					+---AST_OP_LEAF_LITERAL_UINT 6
+
+
 AST_OP_ARRAY_INDEX
 	|
 	+---AST_OP_ARRAY_INDEX
@@ -64,6 +96,11 @@ AST_OP_ARRAY_INDEX
 地址访问指令必须写
 
 共享节点问题
+
+else悬空
+
+and or处理单变量时忽略将左值修改为比较命令的结果
+and中标签继承写错
 
 为什么没父节点又没子节点？？？
 ![alt text](figs/exp08-image.png)

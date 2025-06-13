@@ -100,6 +100,7 @@ lOrOp: T_OR;
 initVal: expr | T_L_BRACE initVal (T_COMMA initVal)* T_R_BRACE;
 
 // if语句
+// TODO: 这么写可能产生else悬空问题，需要后续修改
 ifStmt: T_IF T_L_PAREN cond T_R_PAREN stmt (T_ELSE stmt)?;
 
 // while语句

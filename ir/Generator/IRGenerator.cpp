@@ -997,7 +997,7 @@ bool IRGenerator::ir_and(ast_node * node)
     LabelInstruction * truePass = new LabelInstruction(currentFunc);
     // 继承父节点的所有标签
     src1_node->inherit_label(node);
-    src1_node->falseLabel = truePass;
+    src1_node->trueLabel = truePass;
     src2_node->inherit_label(node);
 
     // 在这里创建真传递出口，真假出口使用父节点条件分支结构的标签
@@ -1024,6 +1024,7 @@ bool IRGenerator::ir_and(ast_node * node)
                                                              zero,
                                                              IntegerType::getTypeBool());
         node->blockInsts.addInst(src1_cmp);
+        left->val = src1_cmp;
     }
 
     // 基于结果进行真传递出口与假出口的传递
@@ -1069,6 +1070,7 @@ bool IRGenerator::ir_and(ast_node * node)
                                                              zero,
                                                              IntegerType::getTypeBool());
         node->blockInsts.addInst(src2_cmp);
+        right->val = src2_cmp;
 	}
 
     // 基于结果进行真出口与假出口的传递
@@ -1130,6 +1132,7 @@ bool IRGenerator::ir_or(ast_node * node)
                                                              zero,
                                                              IntegerType::getTypeBool());
         node->blockInsts.addInst(src1_cmp);
+        left->val = src1_cmp;
     }
 
     // 基于结果进行真出口与假传递出口的传递
@@ -1175,6 +1178,7 @@ bool IRGenerator::ir_or(ast_node * node)
                                                              zero,
                                                              IntegerType::getTypeBool());
         node->blockInsts.addInst(src2_cmp);
+        right->val = src2_cmp;
 	}
 
     // 基于结果进行真出口与假出口的传递（如果对应的是and/or运算就无需创建）
@@ -1237,7 +1241,6 @@ bool IRGenerator::ir_not(ast_node * node)
 bool IRGenerator::ir_if(ast_node * node)
 {
     ast_node * cond_node = node->sons[0];
-    ast_node * true_node = node->sons[1];
 
     // 获取当前作用域使用的函数
     Function * currentFunc = module->getCurrentFunction();
@@ -1255,7 +1258,7 @@ bool IRGenerator::ir_if(ast_node * node)
 
     //! 将创建的真假出口保存到节点中，以便条件表达式计算时使用这些出口
     cond_node->set_label(trueLabel, falseLabel, ifExitLabel);
-    true_node->inherit_label(node);
+
 
     // 获取cond节点，并生成线性IR
     ast_node * cond_res = ir_visit_ast_node(cond_node);
@@ -1295,10 +1298,15 @@ bool IRGenerator::ir_if(ast_node * node)
 
     // 接下来开始处理条件为真的语句块
     node->blockInsts.addInst(trueLabel);
-    
+
     //! 注意：这里同样需要把true_res内的指令添加到本节点的指令块中，否则无法输出
-    ast_node * true_res = ir_visit_ast_node(true_node);
-    node->blockInsts.addInst(true_res->blockInsts);
+    if (node->sons.size() > 1) {
+        ast_node * true_node = node->sons[1];
+        true_node->inherit_label(node);
+
+    	ast_node * true_res = ir_visit_ast_node(true_node);
+    	node->blockInsts.addInst(true_res->blockInsts);
+    }
 
     // 接下来根据是否有falseBlock进行不同的操作
     if (node->sons.size() > 2) {
@@ -1316,8 +1324,7 @@ bool IRGenerator::ir_if(ast_node * node)
         ast_node * false_res = ir_visit_ast_node(false_node);
 		node->blockInsts.addInst(false_res->blockInsts);
 
-    } else if (node->sons.size() == 2) {
-        
+    } else if (node->sons.size() == 1 || node->sons.size() == 2) {
         // 不存在else语句块,证明为空,也不需要无条件跳转
         node->blockInsts.addInst(falseLabel);
     }
@@ -1674,7 +1681,7 @@ bool IRGenerator::ir_array_index(ast_node * node)
         node->base_addr = visited_base->val;
     } else {
         node->base_addr = visited_base->base_addr;
-	}
+    }
 
     // 将指针类型解套，取出真正的数据类型
     auto baseType = base_node->type;
@@ -1682,15 +1689,25 @@ bool IRGenerator::ir_array_index(ast_node * node)
     if (baseType->isPointerType()) {
         Instanceof(base2ptr, PointerType *, baseType);
         pointeeType = base2ptr->getPointeeType();
+        Instanceof(pointee2array, const ArrayType *, pointeeType);
+        node->arrayDepth = pointee2array->getDepth();
+        node->currentDepth = 0;
     } else if (baseType->isArrayType()) {
         pointeeType = baseType;
-	}
+    }
+
+    // 继承数组深度
+    if (visited_base->node_type != ast_operator_type::AST_OP_LEAF_VAR_ID) {
+        node->arrayDepth = visited_base->arrayDepth;
+        node->currentDepth = visited_base->currentDepth;
+    }
 
     const Type * elementType = nullptr;
     if (pointeeType->isArrayType()) {
         Instanceof(pointee2array,const ArrayType *, pointeeType);
         elementType = pointee2array->getElementType();
-	} //TODO: 错误处理
+        node->currentDepth++;
+    } // TODO: 错误处理
 
     ConstInt * numElements = nullptr;
     if (elementType->isArrayType()) {
@@ -1714,14 +1731,17 @@ bool IRGenerator::ir_array_index(ast_node * node)
     node->blockInsts.addInst(mulInst);
 
     Value * addSrc = nullptr;
-    if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX) {
+    if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX ||
+        node->currentDepth == node->arrayDepth) {
         addSrc = node->base_addr;
     } else {
+        //! 这么写有可能指向自身
         addSrc = node->parent->sons[1]->val;
     }
 
     Type * addInstType = nullptr;
-    if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX) {
+    if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX ||
+        (node->parent->node_type == ast_operator_type::AST_OP_ARRAY_INDEX && node->currentDepth == node->arrayDepth)) {
 		addInstType = new PointerType(IntegerType::getTypeInt());
     } else {
         addInstType = IntegerType::getTypeInt();
@@ -1736,13 +1756,15 @@ bool IRGenerator::ir_array_index(ast_node * node)
 
     node->type = const_cast<Type *>(elementType);
 
-    if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX &&
+    if ((node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX &&
         node->parent->node_type != ast_operator_type::AST_OP_ASSIGN &&
-        node->parent->node_type != ast_operator_type::AST_OP_RETURN) {
+        node->parent->node_type != ast_operator_type::AST_OP_RETURN) ||
+        (node->parent->node_type == ast_operator_type::AST_OP_ARRAY_INDEX && node->currentDepth == node->arrayDepth)) {
         LoadInstruction * loadInst = new LoadInstruction(module->getCurrentFunction(),
                                                          addInst,
                                                          IntegerType::getTypeInt());
-		node->blockInsts.addInst(loadInst);
+        node->blockInsts.addInst(loadInst);
+        node->currentDepth = node->arrayDepth = -1;
         node->val = loadInst;
     } else {
         node->val = addInst;
