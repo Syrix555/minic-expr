@@ -30,6 +30,7 @@
 #include "ConstInt.h"
 #include "FormalParam.h"
 #include "Function.h"
+#include "GlobalVariable.h"
 #include "IRCode.h"
 #include "IRGenerator.h"
 #include "Instruction.h"
@@ -425,6 +426,10 @@ bool IRGenerator::ir_block(ast_node * node)
         module->enterScope();
     }
 
+    if (node->parent->node_type != ast_operator_type::AST_OP_WHILE) {
+        node->inherit_label(node->parent);
+	}
+
     std::vector<ast_node *>::iterator pIter;
     for (pIter = node->sons.begin(); pIter != node->sons.end(); ++pIter) {
 
@@ -483,6 +488,34 @@ bool IRGenerator::ir_add(ast_node * node)
     node->blockInsts.addInst(addInst);
 
     node->val = addInst;
+
+	if (left->val->getType()->isInt1Byte()) {
+        LabelInstruction * trueLabel = new LabelInstruction(module->getCurrentFunction());
+        LabelInstruction * falseLabel = new LabelInstruction(module->getCurrentFunction());
+        LabelInstruction * exitLabel = new LabelInstruction(module->getCurrentFunction());
+
+        node->blockInsts.addInst(new BranchInstruction(module->getCurrentFunction(),
+                                                       left->val,
+                                                       trueLabel,
+                                                       falseLabel));
+        node->blockInsts.addInst(trueLabel);
+
+        ConstInt * one = module->newConstInt(1);
+        ConstInt * zero = module->newConstInt(0);
+        Value * tmpVal = module->newVarValue(IntegerType::getTypeInt());
+
+        node->blockInsts.addInst(new MoveInstruction(module->getCurrentFunction(),
+                                                     tmpVal,
+                                                     one));
+        node->blockInsts.addInst(new GotoInstruction(module->getCurrentFunction(), exitLabel));
+
+        node->blockInsts.addInst(falseLabel);
+        node->blockInsts.addInst(new MoveInstruction(module->getCurrentFunction(),
+                                                     tmpVal,
+                                                     zero));
+        node->blockInsts.addInst(exitLabel);
+        node->val = tmpVal;
+	}
 
     return true;
 }
@@ -1030,7 +1063,12 @@ bool IRGenerator::ir_and(ast_node * node)
 
     // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
     if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
-        left->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
+        left->node_type == ast_operator_type::AST_OP_FUNC_CALL ||
+        left->node_type == ast_operator_type::AST_OP_ADD ||
+		left->node_type == ast_operator_type::AST_OP_SUB ||
+		left->node_type == ast_operator_type::AST_OP_MUL ||
+		left->node_type == ast_operator_type::AST_OP_DIV ||
+		left->node_type == ast_operator_type::AST_OP_MOD) {
         BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              left->val,
@@ -1076,7 +1114,12 @@ bool IRGenerator::ir_and(ast_node * node)
     // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
     //! 这里需要重新处理条件，规定调用的函数必须有返回值
     if (right->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
-        right->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
+        right->node_type == ast_operator_type::AST_OP_FUNC_CALL ||
+        right->node_type == ast_operator_type::AST_OP_ADD ||
+		right->node_type == ast_operator_type::AST_OP_SUB ||
+		right->node_type == ast_operator_type::AST_OP_MUL ||
+		right->node_type == ast_operator_type::AST_OP_DIV ||
+		right->node_type == ast_operator_type::AST_OP_MOD) {
         BinaryInstruction * src2_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              right->val,
@@ -1138,7 +1181,12 @@ bool IRGenerator::ir_or(ast_node * node)
     // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
     // TODO 同样不完善，需要修改
     if (left->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
-        left->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
+        left->node_type == ast_operator_type::AST_OP_FUNC_CALL ||
+        left->node_type == ast_operator_type::AST_OP_ADD ||
+		left->node_type == ast_operator_type::AST_OP_SUB ||
+		left->node_type == ast_operator_type::AST_OP_MUL ||
+		left->node_type == ast_operator_type::AST_OP_DIV ||
+		left->node_type == ast_operator_type::AST_OP_MOD) {
         BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              left->val,
@@ -1184,7 +1232,12 @@ bool IRGenerator::ir_or(ast_node * node)
     // 如果and运算的源操作数只有一个变量，需要自行创建比较指令
     // TODO 同样不完善，需要修改
     if (right->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
-        right->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
+        right->node_type == ast_operator_type::AST_OP_FUNC_CALL ||
+        right->node_type == ast_operator_type::AST_OP_ADD ||
+		right->node_type == ast_operator_type::AST_OP_SUB ||
+		right->node_type == ast_operator_type::AST_OP_MUL ||
+		right->node_type == ast_operator_type::AST_OP_DIV ||
+		right->node_type == ast_operator_type::AST_OP_MOD) {
         BinaryInstruction * src2_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              right->val,
@@ -1234,8 +1287,10 @@ bool IRGenerator::ir_not(ast_node * node)
     node->val = src_res->val;
 
     // TODO 处理条件仅存在单变量取反的情况(if语句中同理)，这里不够完善
+    // TODO 计算式也需要处理，但看测试用例再考虑加不加
     if (src_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
-        src_node->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
+        src_node->node_type == ast_operator_type::AST_OP_FUNC_CALL ||
+        src_node->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
 		BinaryInstruction * eqInst = new BinaryInstruction(module->getCurrentFunction(),
 														   IRInstOperator::IRINST_OP_EQ_I,
 														   src_res->val,
@@ -1259,15 +1314,16 @@ bool IRGenerator::ir_if(ast_node * node)
     Function * currentFunc = module->getCurrentFunction();
     ConstInt * zero = module->newConstInt(0);
 
-    if (node->parent->node_type == ast_operator_type::AST_OP_BLOCK &&
-        node->parent->parent->node_type == ast_operator_type::AST_OP_WHILE) {
-        node->inherit_label(node->parent);
-	}
-
     // 先分别创建三个Label：真入口、假入口、分支出口
     LabelInstruction * trueLabel = new LabelInstruction(currentFunc);
     LabelInstruction * falseLabel = new LabelInstruction(currentFunc);
     LabelInstruction * ifExitLabel = new LabelInstruction(currentFunc);
+
+    //! 条件没用，而且不管怎么样都要继承
+    // if (node->parent->node_type == ast_operator_type::AST_OP_BLOCK &&
+    //     node->parent->parent->node_type == ast_operator_type::AST_OP_WHILE) {
+    node->inherit_label(node->parent);
+    // }
 
     //! 将创建的真假出口保存到节点中，以便条件表达式计算时使用这些出口
     cond_node->set_label(trueLabel, falseLabel, ifExitLabel);
@@ -1286,10 +1342,14 @@ bool IRGenerator::ir_if(ast_node * node)
     //! 只能当仅有单变量时创建跳转指令，避免与逻辑运算发生冲突
     if (cond_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
         cond_node->node_type == ast_operator_type::AST_OP_SUB ||
-        cond_node->node_type == ast_operator_type::AST_OP_NOT) {
+        cond_node->node_type == ast_operator_type::AST_OP_NOT ||
+        cond_node->node_type == ast_operator_type::AST_OP_ARRAY_INDEX ||
+        cond_node->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
 		Value * cond_val;
         if (cond_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
-            cond_node->node_type == ast_operator_type::AST_OP_SUB) {
+            cond_node->node_type == ast_operator_type::AST_OP_SUB ||
+            cond_node->node_type == ast_operator_type::AST_OP_ARRAY_INDEX ||
+            cond_node->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
             BinaryInstruction * neInst = new BinaryInstruction(currentFunc,
                                                                IRInstOperator::IRINST_OP_NE_I,
                                                                cond_res->val,
@@ -1385,10 +1445,14 @@ bool IRGenerator::ir_while(ast_node * node)
     //! 只能当仅有单变量时创建跳转指令，避免与逻辑运算发生冲突
     if (cond_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
         cond_node->node_type == ast_operator_type::AST_OP_SUB ||
-        cond_node->node_type == ast_operator_type::AST_OP_NOT) {
+        cond_node->node_type == ast_operator_type::AST_OP_NOT ||
+        cond_node->node_type == ast_operator_type::AST_OP_ARRAY_INDEX ||
+        cond_node->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
 		Value * cond_val;
         if (cond_node->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID ||
-            cond_node->node_type == ast_operator_type::AST_OP_SUB) {
+            cond_node->node_type == ast_operator_type::AST_OP_SUB ||
+            cond_node->node_type == ast_operator_type::AST_OP_ARRAY_INDEX ||
+        	cond_node->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
             BinaryInstruction * neInst = new BinaryInstruction(currentFunc,
                                                                IRInstOperator::IRINST_OP_NE_I,
                                                                cond_res->val,
@@ -1427,6 +1491,9 @@ bool IRGenerator::ir_while(ast_node * node)
 bool IRGenerator::ir_break(ast_node * node)
 {
     auto breakLabel = node->parent->endLabel;
+    if (node->parent->node_type == ast_operator_type::AST_OP_WHILE) {
+        breakLabel = node->endLabel;
+	}
     node->blockInsts.addInst(new GotoInstruction(module->getCurrentFunction(), breakLabel));
     return true;
 }
@@ -1437,6 +1504,9 @@ bool IRGenerator::ir_break(ast_node * node)
 bool IRGenerator::ir_continue(ast_node * node)
 {
     auto continueLabel = node->parent->falseLabel;
+    if (node->parent->node_type == ast_operator_type::AST_OP_WHILE) {
+        continueLabel = node->falseLabel;
+	}
     node->blockInsts.addInst(new GotoInstruction(module->getCurrentFunction(), continueLabel));
     return true;
 }
@@ -1654,7 +1724,8 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 
         node->val = module->newVarValue(node->sons[0]->type, node->sons[1]->name);
 
-        if (node->sons.size() > 2) {
+        Instanceof(val2global, GlobalVariable *, node->val);
+        if (node->sons.size() > 2 && val2global == nullptr) {
 			ast_node * init = ir_visit_ast_node(node->sons[2]);
 			if (!init) {
 				return false;
@@ -1663,6 +1734,15 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 
 			node->blockInsts.addInst(init->blockInsts);
 			node->blockInsts.addInst(movInst);
+        } else if (node->sons.size() > 2 && val2global != nullptr) {
+            ast_node * init = ir_visit_ast_node(node->sons[2]);
+			if (!init) {
+				return false;
+            }
+            if (init->val != nullptr) {
+				Instanceof(value2constInt, ConstInt *, init->val);
+                val2global->setInitVal(value2constInt);
+			}
 		}
 	}
     return true;

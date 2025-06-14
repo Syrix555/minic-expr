@@ -16,10 +16,12 @@
 ///
 #pragma once
 
+#include "ConstInt.h"
 #include "GlobalValue.h"
 #include "IRConstant.h"
 #include "PointerType.h"
 #include "ArrayType.h"
+#include <string>
 
 ///
 /// @brief 全局变量，寻址时通过符号名或变量名来寻址
@@ -32,7 +34,8 @@ public:
     /// @param _type 类型
     /// @param _name 名字
     ///
-    explicit GlobalVariable(Type * _type, std::string _name) : GlobalValue(_type, _name)
+    explicit GlobalVariable(Type * _type, std::string _name, ConstInt * _init = nullptr)
+        : GlobalValue(_type, _name), initVal(_init)
     {
         // 设置对齐大小
         setAlignment(4);
@@ -57,6 +60,22 @@ public:
     {
         return this->inBSSSection;
     }
+
+    [[nodiscard]] bool hasInitVal() const
+    {
+        return initVal != nullptr;
+	}
+
+    [[nodiscard]] ConstInt * getInitVal() const
+    {
+        return initVal;
+    }
+
+    void setInitVal(ConstInt * init)
+    {
+        this->initVal = init;
+        this->inBSSSection = false;
+	}
 
     ///
     /// @brief 取得变量所在的作用域层级
@@ -99,9 +118,12 @@ public:
             dimStr = allocatedType->getDimString();
             str += "declare " + allocatedType->toString() + " " + getIRName() + dimStr;
         } else {
-            str = "declare " + getType()->toString() + " " + getIRName();
+            if (hasInitVal()) {
+                str = "declare " + getType()->toString() + " " + getIRName() + " = " + std::to_string(initVal->getVal());
+            } else {
+                str = "declare " + getType()->toString() + " " + getIRName();
+			}
 		}
-
     }
 
 private:
@@ -114,4 +136,9 @@ private:
     /// @brief 默认全局变量在BSS段，没有初始化，或者即使初始化过，但都值都为0
     ///
     bool inBSSSection = true;
+
+    ///
+    /// @brief 全局变量的初始值
+    ///
+    ConstInt * initVal = nullptr;
 };

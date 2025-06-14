@@ -45,7 +45,7 @@ varDef: T_ID (T_L_BRACKET expr T_R_BRACKET)* (T_ASSIGN initVal)?;
 
 // 目前语句支持return和赋值语句
 stmt:
-	T_RETURN expr T_SEMICOLON			# returnStatement
+	T_RETURN expr? T_SEMICOLON			# returnStatement
 	| lVal T_ASSIGN expr T_SEMICOLON	# assignStatement
 	| block								# blockStatement
 	| expr? T_SEMICOLON					# expressionStatement
