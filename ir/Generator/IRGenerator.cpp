@@ -1068,7 +1068,8 @@ bool IRGenerator::ir_and(ast_node * node)
 		left->node_type == ast_operator_type::AST_OP_SUB ||
 		left->node_type == ast_operator_type::AST_OP_MUL ||
 		left->node_type == ast_operator_type::AST_OP_DIV ||
-		left->node_type == ast_operator_type::AST_OP_MOD) {
+		left->node_type == ast_operator_type::AST_OP_MOD ||
+		left->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
         BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              left->val,
@@ -1119,7 +1120,8 @@ bool IRGenerator::ir_and(ast_node * node)
 		right->node_type == ast_operator_type::AST_OP_SUB ||
 		right->node_type == ast_operator_type::AST_OP_MUL ||
 		right->node_type == ast_operator_type::AST_OP_DIV ||
-		right->node_type == ast_operator_type::AST_OP_MOD) {
+		right->node_type == ast_operator_type::AST_OP_MOD ||
+		right->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
         BinaryInstruction * src2_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              right->val,
@@ -1186,7 +1188,8 @@ bool IRGenerator::ir_or(ast_node * node)
 		left->node_type == ast_operator_type::AST_OP_SUB ||
 		left->node_type == ast_operator_type::AST_OP_MUL ||
 		left->node_type == ast_operator_type::AST_OP_DIV ||
-		left->node_type == ast_operator_type::AST_OP_MOD) {
+		left->node_type == ast_operator_type::AST_OP_MOD ||
+		left->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
         BinaryInstruction * src1_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              left->val,
@@ -1237,7 +1240,8 @@ bool IRGenerator::ir_or(ast_node * node)
 		right->node_type == ast_operator_type::AST_OP_SUB ||
 		right->node_type == ast_operator_type::AST_OP_MUL ||
 		right->node_type == ast_operator_type::AST_OP_DIV ||
-		right->node_type == ast_operator_type::AST_OP_MOD) {
+		right->node_type == ast_operator_type::AST_OP_MOD ||
+		right->node_type == ast_operator_type::AST_OP_ARRAY_INDEX) {
         BinaryInstruction * src2_cmp = new BinaryInstruction(currentFunc,
                                                              IRInstOperator::IRINST_OP_NE_I,
                                                              right->val,
@@ -1740,7 +1744,11 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 				return false;
             }
             if (init->val != nullptr) {
-				Instanceof(value2constInt, ConstInt *, init->val);
+                Instanceof(value2constInt, ConstInt *, init->val);
+                if (value2constInt == nullptr) {
+                    // 说明该值为一个负数，需要单独进行处理
+                    value2constInt = module->newConstInt(0-init->sons[0]->integer_val);
+				}
                 val2global->setInitVal(value2constInt);
 			}
 		}

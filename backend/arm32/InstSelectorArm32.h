@@ -136,6 +136,14 @@ protected:
     /// @param operator_name 操作码
     void translate_no_result(Instruction * inst, string operator_name);
 
+    /// @brief 加载指令翻译成ARM32汇编
+    /// @param inst IR指令
+    void translate_load(Instruction * inst);
+
+    /// @brief 存储指令翻译成ARM32汇编
+    /// @param inst IR指令
+    void translate_store(Instruction * inst);
+
     /// @brief 函数调用指令翻译成ARM32汇编
     /// @param inst IR指令
     void translate_call(Instruction * inst);

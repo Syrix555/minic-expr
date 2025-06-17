@@ -15,21 +15,31 @@
 ///
 #include <cstdint>
 #include <cstdio>
+#include <map>
 #include <string>
 #include <vector>
 #include <iostream>
 
+#include "BinaryInstruction.h"
+#include "ConstInt.h"
+#include "FormalParam.h"
 #include "Function.h"
+#include "Instruction.h"
+#include "IntegerType.h"
+#include "MemVariable.h"
 #include "Module.h"
 #include "PlatformArm32.h"
 #include "CodeGeneratorArm32.h"
 #include "InstSelectorArm32.h"
+#include "PointerType.h"
 #include "SimpleRegisterAllocator.h"
 #include "ILocArm32.h"
 #include "RegVariable.h"
 #include "FuncCallInstruction.h"
 #include "ArgInstruction.h"
 #include "MoveInstruction.h"
+#include "Type.h"
+#include "Common.h"
 
 /// @brief 构造函数
 /// @param tab 符号表
@@ -62,9 +72,13 @@ void CodeGeneratorArm32::genDataSection()
     for (auto var: module->getGlobalVariables()) {
 
         if (var->isInBSSSection()) {
-
-            // 在BSS段的全局变量，可以包含初值全是0的变量
+            if (var->getType()->isPointerType()) {
+                Instanceof(pointer, PointerType *, var->getType());
+                fprintf(fp, ".comm %s, %d, %d\n", var->getName().c_str(), pointer->getPointeeType()->getSize(), var->getAlignment());
+            } else {
+                // 在BSS段的全局变量，可以包含初值全是0的变量
             fprintf(fp, ".comm %s, %d, %d\n", var->getName().c_str(), var->getType()->getSize(), var->getAlignment());
+			}
         } else {
 
             // 有初值的全局变量
@@ -72,8 +86,12 @@ void CodeGeneratorArm32::genDataSection()
             fprintf(fp, ".data\n");
             fprintf(fp, ".align %d\n", var->getAlignment());
             fprintf(fp, ".type %s, %%object\n", var->getName().c_str());
-            fprintf(fp, "%s\n", var->getName().c_str());
+            fprintf(fp, "%s:\n", var->getName().c_str());
             // TODO 后面设置初始化的值，具体请参考ARM的汇编
+            if (var->hasInitVal()) {
+                auto initVal = var->getInitVal();
+                fprintf(fp, ".word %d\n", initVal->getVal());
+			}
         }
     }
 }
@@ -224,7 +242,7 @@ void CodeGeneratorArm32::registerAllocation(Function * func)
 #endif
 }
 
-/// @brief 寄存器分配前对函数内的指令进行调整，以便方便寄存器分配
+/// @brief 调整函数形参
 /// @param func 要处理的函数
 void CodeGeneratorArm32::adjustFormalParamInsts(Function * func)
 {
@@ -240,17 +258,22 @@ void CodeGeneratorArm32::adjustFormalParamInsts(Function * func)
     }
 
     // 根据ARM版C语言的调用约定，除前4个外的实参进行值传递，逆序入栈
+    //! 指针类型需要进行地址传递，注意帧指针的移动
     int64_t fp_esp = func->getProtectedReg().size() * 4;
     for (int k = 4; k < (int) params.size(); k++) {
 
         params[k]->setMemoryAddr(ARM32_FP_REG_NO, fp_esp);
 
         // 增加4字节，目前只支持int类型
-        fp_esp += params[k]->getType()->getSize();
+        int64_t size = params[k]->getType()->getSize();
+        if (params[k]->getType()->isPointerType()) {
+            size = 4;
+		}
+        fp_esp += size;
     }
 }
 
-/// @brief 寄存器分配前对函数内的指令进行调整，以便方便寄存器分配
+/// @brief 调整函数调用时的指令与实参
 /// @param func 要处理的函数
 void CodeGeneratorArm32::adjustFuncCallInsts(Function * func)
 {
@@ -390,7 +413,15 @@ void CodeGeneratorArm32::stackAlloc(Function * func)
 
             // 该变量没有分配寄存器
 
-            int32_t size = var->getType()->getSize();
+            int32_t size;
+            if (var->getType()->isPointerType()) {
+                Instanceof(pointer, PointerType *, var->getType());
+                size = pointer->getPointeeType()->getSize();
+                if (size == 0)
+                    size = 4;		// 如果传递的是数组指针，直接赋给一个字节的大小
+            } else {
+                size = var->getType()->getSize();
+			}
 
             // 32位ARM平台按照4字节的大小整数倍分配局部变量
             size = (size + 3) & ~3;
@@ -415,6 +446,9 @@ void CodeGeneratorArm32::stackAlloc(Function * func)
             // 有值，并且没有分配寄存器
 
             int32_t size = inst->getType()->getSize();
+            if (inst->getType()->isPointerType()) {
+                size = 4;				//这里有的时候计算的结果为指针类型，强制变换为4
+			}
 
             // 32位ARM平台按照4字节的大小整数倍分配局部变量
             size = (size + 3) & ~3;

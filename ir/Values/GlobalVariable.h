@@ -61,20 +61,29 @@ public:
         return this->inBSSSection;
     }
 
+    /// @brief 检查该全局变量是否有初值
+    /// @return true
+    /// @return false
     [[nodiscard]] bool hasInitVal() const
     {
         return initVal != nullptr;
 	}
 
+    /// @brief 获取初值
+    /// @return ConstInt*
     [[nodiscard]] ConstInt * getInitVal() const
     {
         return initVal;
     }
 
+    /// @brief 设置初值
+    /// @param init
     void setInitVal(ConstInt * init)
     {
-        this->initVal = init;
-        this->inBSSSection = false;
+        if (init->getVal() != 0) {
+            this->initVal = init;
+        	this->inBSSSection = false;
+		}
 	}
 
     ///

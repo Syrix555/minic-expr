@@ -17,10 +17,13 @@
 #include <string>
 
 #include "ILocArm32.h"
+#include "ArrayType.h"
 #include "Common.h"
 #include "Function.h"
+#include "GlobalVariable.h"
 #include "PlatformArm32.h"
 #include "Module.h"
+#include "PointerType.h"
 
 ArmInst::ArmInst(std::string _opcode,
                  std::string _result,
@@ -425,18 +428,26 @@ void ILocArm32::lea_var(int rs_reg_no, Value * var)
     // 被加载的变量肯定不是寄存器变量！
 
     // 目前只考虑局部变量
+    // TODO 全局变量实现
 
     // 栈帧偏移
     int32_t var_baseRegId = -1;
     int64_t var_offset = -1;
 
-    bool result = var->getMemoryAddr(&var_baseRegId, &var_offset);
-    if (!result) {
-        minic_log(LOG_ERROR, "BUG");
-    }
+    if (Instanceof(globalVar, GlobalVariable *, var)) {
+        load_symbol(rs_reg_no, globalVar->getName());
 
-    // lea r8, [fp,#-16]
-    leaStack(rs_reg_no, var_baseRegId, var_offset);
+        // emit("ldr", PlatformArm32::regName[rs_reg_no], "[" + PlatformArm32::regName[rs_reg_no] + "]");
+    } else {
+        bool result = var->getMemoryAddr(&var_baseRegId, &var_offset);
+    	if (!result) {
+        	minic_log(LOG_ERROR, "BUG");
+    	}
+
+        // lea r8, [fp,#-16]
+    	leaStack(rs_reg_no, var_baseRegId, var_offset);
+	}
+
 }
 
 /// @brief 保存寄存器到变量，保证将计算结果（r8）保存到变量

@@ -16,8 +16,10 @@
 #include <cstdint>
 #include <cstdio>
 
+#include "ArrayType.h"
 #include "BranchInstruction.h"
 #include "Common.h"
+#include "GlobalVariable.h"
 #include "ILocArm32.h"
 #include "InstSelectorArm32.h"
 #include "Instruction.h"
@@ -31,6 +33,8 @@
 #include "GotoInstruction.h"
 #include "FuncCallInstruction.h"
 #include "MoveInstruction.h"
+#include "Type.h"
+#include "Value.h"
 
 /// @brief 构造函数
 /// @param _irCode 指令
@@ -64,7 +68,10 @@ InstSelectorArm32::InstSelectorArm32(vector<Instruction *> & _irCode,
     translator_handlers[IRInstOperator::IRINST_OP_EQ_I] = &InstSelectorArm32::translate_eq_int32;
     translator_handlers[IRInstOperator::IRINST_OP_NE_I] = &InstSelectorArm32::translate_ne_int32;
 
-	translator_handlers[IRInstOperator::IRINST_OP_BRANCH] = &InstSelectorArm32::translate_branch;
+    translator_handlers[IRInstOperator::IRINST_OP_BRANCH] = &InstSelectorArm32::translate_branch;
+
+    translator_handlers[IRInstOperator::IRINST_OP_LOAD] = &InstSelectorArm32::translate_load;
+    translator_handlers[IRInstOperator::IRINST_OP_STORE] = & InstSelectorArm32::translate_store;
 
     translator_handlers[IRInstOperator::IRINST_OP_FUNC_CALL] = &InstSelectorArm32::translate_call;
     translator_handlers[IRInstOperator::IRINST_OP_ARG] = &InstSelectorArm32::translate_arg;
@@ -218,15 +225,41 @@ void InstSelectorArm32::translate_assign(Instruction * inst)
         iloc.store_var(arg1_regId, result, ARM32_TMP_REG_NO);
     } else if (result_regId != -1) {
         // 内存变量 => 寄存器
-
-        iloc.load_var(result_regId, arg1);
+        if (arg1->getType()->isPointerType()) {
+            Instanceof(pointer, PointerType *, arg1->getType());
+            const Type * tmp = pointer->getPointeeType();
+            if (Instanceof(array, const ArrayType *, tmp)) {
+                if (array->getNumElements() == 0) {
+                    iloc.load_var(result_regId, arg1);			// 说明传递的是函数形参中的数组类型，需要加载的是地址
+                } else {
+                    iloc.lea_var(result_regId, arg1);
+				}
+			} else {
+				iloc.load_var(result_regId, arg1);
+			}
+        } else {
+            iloc.load_var(result_regId, arg1);
+		}
     } else {
         // 内存变量 => 内存变量
 
         int32_t temp_regno = simpleRegisterAllocator.Allocate();
 
         // arg1 -> r8
-        iloc.load_var(temp_regno, arg1);
+        if (arg1->getType()->isPointerType()) {
+            Instanceof(pointer, PointerType *, arg1->getType());
+            if (Instanceof(array, const ArrayType *, pointer->getPointeeType())) {
+                if (array->getNumElements() == 0) {
+                    iloc.load_var(temp_regno, arg1);			// 说明传递的是函数形参中的数组类型，需要加载的是地址
+                } else {
+                    iloc.lea_var(temp_regno, arg1);
+				}
+			} else {
+				iloc.load_var(temp_regno, arg1);
+			}
+        } else {
+            iloc.load_var(temp_regno, arg1);
+		}
 
         // r8 -> rs 可能用到r9
         iloc.store_var(temp_regno, result, ARM32_TMP_REG_NO);
@@ -306,27 +339,74 @@ void InstSelectorArm32::translate_two_operator(Instruction * inst, string operat
     int32_t load_result_reg_no, load_arg1_reg_no, load_arg2_reg_no;
 
     // 看arg1是否是寄存器，若是则寄存器寻址，否则要load变量到寄存器中
-    if (arg1_reg_no == -1) {
+    if (arg1->getType()->isPointerType()) {
+        Instanceof(pointer, PointerType *, arg1->getType());
+        if (pointer->getPointeeType()->isArrayType()) {
+            load_arg1_reg_no = simpleRegisterAllocator.Allocate(arg1);
+            Instanceof(array, const ArrayType *, pointer->getPointeeType());
+            if (array->getNumElements() == 0) {
+                iloc.load_var(load_arg1_reg_no, arg1);
+            } else {
+                iloc.lea_var(load_arg1_reg_no, arg1);
+			}
+		} else {
+			if (arg1_reg_no == -1) {
 
-        // 分配一个寄存器r8
-        load_arg1_reg_no = simpleRegisterAllocator.Allocate(arg1);
+				// 分配一个寄存器r8
+				load_arg1_reg_no = simpleRegisterAllocator.Allocate(arg1);
 
-        // arg1 -> r8，这里可能由于偏移不满足指令的要求，需要额外分配寄存器
-        iloc.load_var(load_arg1_reg_no, arg1);
+				// arg1 -> r8，这里可能由于偏移不满足指令的要求，需要额外分配寄存器
+				iloc.load_var(load_arg1_reg_no, arg1);
+			} else {
+				load_arg1_reg_no = arg1_reg_no;
+			}
+		}
     } else {
-        load_arg1_reg_no = arg1_reg_no;
-    }
+		if (arg1_reg_no == -1) {
 
-    // 看arg2是否是寄存器，若是则寄存器寻址，否则要load变量到寄存器中
-    if (arg2_reg_no == -1) {
+			// 分配一个寄存器r8
+			load_arg1_reg_no = simpleRegisterAllocator.Allocate(arg1);
 
-        // 分配一个寄存器r9
-        load_arg2_reg_no = simpleRegisterAllocator.Allocate(arg2);
+			// arg1 -> r8，这里可能由于偏移不满足指令的要求，需要额外分配寄存器
+			iloc.load_var(load_arg1_reg_no, arg1);
+		} else {
+			load_arg1_reg_no = arg1_reg_no;
+		}
+	}
 
-        // arg2 -> r9
-        iloc.load_var(load_arg2_reg_no, arg2);
+    if (arg2->getType()->isPointerType()) {
+        Instanceof(pointer, PointerType *, arg2->getType());
+        if (pointer->getPointeeType()->isArrayType()) {
+            load_arg2_reg_no = simpleRegisterAllocator.Allocate(arg2);
+            Instanceof(array, const ArrayType *, pointer->getPointeeType());
+            if (array->getNumElements() == 0) {
+                iloc.load_var(load_arg2_reg_no, arg2);
+            } else {
+                iloc.lea_var(load_arg2_reg_no, arg2);
+			}
+		} else {
+			if (arg2_reg_no == -1) {
+
+				// 分配一个寄存器r8
+				load_arg2_reg_no = simpleRegisterAllocator.Allocate(arg2);
+
+				// arg1 -> r8，这里可能由于偏移不满足指令的要求，需要额外分配寄存器
+				iloc.load_var(load_arg2_reg_no, arg2);
+			} else {
+				load_arg2_reg_no = arg2_reg_no;
+			}
+		}
     } else {
-        load_arg2_reg_no = arg2_reg_no;
+		if (arg2_reg_no == -1) {
+
+			// 分配一个寄存器r8
+			load_arg2_reg_no = simpleRegisterAllocator.Allocate(arg2);
+
+			// arg1 -> r8，这里可能由于偏移不满足指令的要求，需要额外分配寄存器
+			iloc.load_var(load_arg2_reg_no, arg2);
+		} else {
+			load_arg2_reg_no = arg2_reg_no;
+		}
     }
 
     // 看结果变量是否是寄存器，若不是则需要分配一个新的寄存器来保存运算的结果		备注：本身就不可能存在这种情况，比较像防御式编程
@@ -357,6 +437,7 @@ void InstSelectorArm32::translate_two_operator(Instruction * inst, string operat
     simpleRegisterAllocator.free(arg2);
     simpleRegisterAllocator.free(result);
 }
+
 /// @brief 无结果寄存器指令翻译成ARM32汇编
 /// @param inst IR指令
 /// @param operator_name 操作码
@@ -633,6 +714,76 @@ void InstSelectorArm32::translate_branch(Instruction * inst)
 	}
 }
 
+/// @brief 加载指令翻译成ARM32汇编
+/// @param inst IR指令
+void InstSelectorArm32::translate_load(Instruction * inst)
+{
+    Value * result = inst;
+    Value * addr = inst->getOperand(0);
+
+    int32_t result_reg_no = result->getRegId();
+    int32_t addr_reg_no = addr->getRegId();
+    int32_t load_result_reg_no, load_addr_reg_no;
+
+    if (result_reg_no == -1) {
+        load_result_reg_no = simpleRegisterAllocator.Allocate(result);
+        iloc.load_var(load_result_reg_no, result);
+    } else {
+        load_result_reg_no = result_reg_no;
+    }
+
+    if (addr_reg_no == -1) {
+        load_addr_reg_no = simpleRegisterAllocator.Allocate(addr);
+        iloc.load_var(load_addr_reg_no, addr);
+    } else {
+        load_addr_reg_no = addr_reg_no;
+	}
+
+    iloc.inst("ldr",
+              PlatformArm32::regName[load_result_reg_no],
+              "[" + PlatformArm32::regName[load_addr_reg_no] + "]");
+
+    if (result_reg_no != load_result_reg_no) {
+        iloc.store_var(load_result_reg_no, result, ARM32_TMP_REG_NO);
+	}
+
+    simpleRegisterAllocator.free(addr);
+    simpleRegisterAllocator.free(result);
+}
+
+/// @brief 存储指令翻译成ARM32汇编
+/// @param inst IR指令
+void InstSelectorArm32::translate_store(Instruction * inst)
+{
+    Value * addr = inst->getOperand(0);
+    Value * result = inst->getOperand(1);
+
+	int32_t addr_reg_no = addr->getRegId();
+	int32_t result_reg_no = result->getRegId();
+    int32_t load_result_reg_no, load_addr_reg_no;
+
+    if (addr_reg_no == -1) {
+        load_addr_reg_no = simpleRegisterAllocator.Allocate(addr);
+        iloc.load_var(load_addr_reg_no, addr);
+    } else {
+        load_addr_reg_no = addr_reg_no;
+	}
+
+    if (result_reg_no == -1) {
+        load_result_reg_no = simpleRegisterAllocator.Allocate(result);
+        iloc.load_var(load_result_reg_no, result);
+    } else {
+        load_result_reg_no = result_reg_no;
+    }
+
+    iloc.inst("str",
+              PlatformArm32::regName[load_result_reg_no],
+              "[" + PlatformArm32::regName[load_addr_reg_no] + "]");
+
+    simpleRegisterAllocator.free(addr);
+    simpleRegisterAllocator.free(result);
+}
+
 /// @brief 函数调用指令翻译成ARM32汇编
 /// @param inst IR指令
 void InstSelectorArm32::translate_call(Instruction * inst)
@@ -665,7 +816,12 @@ void InstSelectorArm32::translate_call(Instruction * inst)
             auto arg = callInst->getOperand(k);
 
             // 新建一个内存变量，用于栈传值到形参变量中
-            MemVariable * newVal = func->newMemVariable((Type *) PointerType::get(arg->getType()));
+            MemVariable * newVal;
+            if (arg->getType()->isPointerType()) {
+                newVal = func->newMemVariable(arg->getType());
+            } else {
+                newVal = func->newMemVariable((Type *) PointerType::get(arg->getType()));
+			}
             newVal->setMemoryAddr(ARM32_SP_REG_NO, esp);
             esp += 4;
 
