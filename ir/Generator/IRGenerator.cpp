@@ -179,6 +179,7 @@ bool IRGenerator::ir_compile_unit(ast_node * node)
         ast_node * son_node = ir_visit_ast_node(son);
         if (!son_node) {
             // TODO 自行追加语义错误处理
+            minic_log(LOG_ERROR, "函数或语句不存在");
             return false;
         }
     }
@@ -197,6 +198,7 @@ bool IRGenerator::ir_function_define(ast_node * node)
     if (module->getCurrentFunction()) {
         // 函数中嵌套定义函数，这是不允许的，错误退出
         // TODO 自行追加语义错误处理
+        minic_log(LOG_ERROR, "不允许嵌套函数");
         return false;
     }
 
@@ -215,6 +217,7 @@ bool IRGenerator::ir_function_define(ast_node * node)
     if (!newFunc) {
         // 新定义的函数已经存在，则失败返回。
         // TODO 自行追加语义错误处理
+        minic_log(LOG_ERROR, "函数%s已存在", name_node->name.c_str());
         return false;
     }
 
@@ -244,6 +247,7 @@ bool IRGenerator::ir_function_define(ast_node * node)
     if (!result) {
         // 形参解析失败
         // TODO 自行追加语义错误处理
+        minic_log(LOG_ERROR, "函数 %s 形参列表解析失败",name_node->name.c_str());
         return false;
     }
     node->blockInsts.addInst(param_node->blockInsts);
@@ -270,6 +274,7 @@ bool IRGenerator::ir_function_define(ast_node * node)
     if (!result) {
         // block解析失败
         // TODO 自行追加语义错误处理
+        minic_log(LOG_ERROR, "函数 %s 语句块解析失败",name_node->name.c_str());
         return false;
     }
 
@@ -1803,13 +1808,15 @@ bool IRGenerator::ir_array_index(ast_node * node)
         node->currentDepth = visited_base->currentDepth;
     }
 
+    // 获取元素类型
     const Type * elementType = nullptr;
     if (pointeeType->isArrayType()) {
         Instanceof(pointee2array,const ArrayType *, pointeeType);
         elementType = pointee2array->getElementType();
         node->currentDepth++;
-    } // TODO: 错误处理
+    }
 
+	// 获取元素个数/根类型大小
     ConstInt * numElements = nullptr;
     if (elementType->isArrayType()) {
         elementType = dynamic_cast<const ArrayType *>(elementType);
@@ -1818,6 +1825,7 @@ bool IRGenerator::ir_array_index(ast_node * node)
         numElements = module->newConstInt(elementType->getSize());
 	}
 
+    // 选择源操作数，给出mul指令
     Value * mulSrc = nullptr;
     if (node->sons[0]->node_type != ast_operator_type::AST_OP_ARRAY_INDEX) {
         mulSrc = visited_index->val;
@@ -1831,6 +1839,7 @@ bool IRGenerator::ir_array_index(ast_node * node)
                                                         IntegerType::getTypeInt());
     node->blockInsts.addInst(mulInst);
 
+    // 选择源操作数，给出add指令
     Value * addSrc = nullptr;
     if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX ||
         node->currentDepth == node->arrayDepth) {
@@ -1840,6 +1849,7 @@ bool IRGenerator::ir_array_index(ast_node * node)
         addSrc = node->parent->sons[1]->val;
     }
 
+    // 为add指令的值确定类型
     Type * addInstType = nullptr;
     if (node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX ||
         (node->parent->node_type == ast_operator_type::AST_OP_ARRAY_INDEX && node->currentDepth == node->arrayDepth)) {
@@ -1857,6 +1867,7 @@ bool IRGenerator::ir_array_index(ast_node * node)
 
     node->type = const_cast<Type *>(elementType);
 
+    // 将地址对应值加载到临时变量中
     if ((node->parent->node_type != ast_operator_type::AST_OP_ARRAY_INDEX &&
          node->parent->node_type != ast_operator_type::AST_OP_ASSIGN &&
          node->parent->node_type != ast_operator_type::AST_OP_RETURN &&
@@ -1871,6 +1882,6 @@ bool IRGenerator::ir_array_index(ast_node * node)
     } else {
         node->val = addInst;
     }
-    
+
     return true;
 }

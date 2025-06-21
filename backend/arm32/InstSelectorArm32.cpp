@@ -339,14 +339,17 @@ void InstSelectorArm32::translate_two_operator(Instruction * inst, string operat
     int32_t load_result_reg_no, load_arg1_reg_no, load_arg2_reg_no;
 
     // 看arg1是否是寄存器，若是则寄存器寻址，否则要load变量到寄存器中
+    // 获取数组首地址时需要特别处理
     if (arg1->getType()->isPointerType()) {
         Instanceof(pointer, PointerType *, arg1->getType());
         if (pointer->getPointeeType()->isArrayType()) {
             load_arg1_reg_no = simpleRegisterAllocator.Allocate(arg1);
             Instanceof(array, const ArrayType *, pointer->getPointeeType());
             if (array->getNumElements() == 0) {
+				// 函数形参的话是地址保存在相应位置，读取即可
                 iloc.load_var(load_arg1_reg_no, arg1);
             } else {
+				// 其他情况下我们直接获取栈偏移找到数组首地址
                 iloc.lea_var(load_arg1_reg_no, arg1);
 			}
 		} else {
@@ -380,8 +383,10 @@ void InstSelectorArm32::translate_two_operator(Instruction * inst, string operat
             load_arg2_reg_no = simpleRegisterAllocator.Allocate(arg2);
             Instanceof(array, const ArrayType *, pointer->getPointeeType());
             if (array->getNumElements() == 0) {
+                // 函数形参的话是地址保存在相应位置，读取即可
                 iloc.load_var(load_arg2_reg_no, arg2);
             } else {
+				// 其他情况下我们直接获取栈偏移找到数组首地址
                 iloc.lea_var(load_arg2_reg_no, arg2);
 			}
 		} else {

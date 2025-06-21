@@ -35,8 +35,8 @@
 /// @brief 用于从 visitVarDef 向 visitVarDecl 传递变量定义信息的辅助结构体
 struct VarDefInfo {
 	ast_node * id_node;                     // id节点，原visitVarDef返回值
-    std::vector<ast_node*> dim_nodes;   // 维度表达式节点列表
-    ast_node* init_node = nullptr;      // 初始化值节点
+    std::vector<ast_node*> dim_nodes;   	// 维度表达式节点列表
+    ast_node* init_node = nullptr;      	// 初始化值节点
 };
 
 /// @brief 构造函数
